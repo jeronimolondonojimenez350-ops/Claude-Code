@@ -1,0 +1,1083 @@
+<!--
+  ============================================================================
+  CRONOGRAMA SEMANAL PARA DOS PERSONAS
+  ----------------------------------------------------------------------------
+  Aplicación web de una sola página, 100% autónoma (HTML + CSS + JavaScript
+  puro). No necesita internet, ni servidor, ni instalar nada: basta con abrir
+  este archivo con doble clic en cualquier navegador moderno.
+
+  Todo el código está comentado en español para que puedan entenderlo y
+  modificarlo sin ser programadores. Las partes que quizá quieran tocar están
+  marcadas con el rótulo  >>> PERSONALIZAR <<<
+
+  Los datos se guardan automáticamente en el propio navegador (localStorage),
+  así que no se pierden al cerrar. También pueden exportarlos a un archivo
+  JSON de respaldo e importarlos de nuevo cuando quieran.
+  ============================================================================
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cronograma semanal</title>
+<style>
+  /* =========================================================================
+     ESTILOS (CSS)
+     Aquí se define la apariencia. Los colores principales están al inicio,
+     como "variables", para que sea fácil cambiarlos en un solo lugar.
+     ========================================================================= */
+
+  :root {
+    /* >>> PERSONALIZAR <<< Paleta general de la interfaz */
+    --color-fondo: #f4f6fb;
+    --color-tarjeta: #ffffff;
+    --color-texto: #1f2733;
+    --color-texto-suave: #6b7684;
+    --color-borde: #e2e7f0;
+    --color-primario: #4f6ef7;
+    --color-primario-oscuro: #3a56d4;
+    --color-peligro: #e5484d;
+    --color-libre: #29a37a;          /* Resaltado de tiempo libre compartido */
+    --sombra: 0 1px 3px rgba(20, 30, 60, 0.08), 0 4px 12px rgba(20, 30, 60, 0.05);
+    --radio: 12px;
+
+    /* Altura del carril de un día = minutos visibles * este factor (px por minuto).
+       Súbelo para bloques más altos, bájalo para una vista más compacta. */
+    --px-por-minuto: 0.62;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--color-fondo);
+    color: var(--color-texto);
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Barra superior ---- */
+  header.barra {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--color-tarjeta);
+    border-bottom: 1px solid var(--color-borde);
+    padding: 12px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  header.barra h1 {
+    font-size: 18px;
+    margin: 0;
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header.barra h1 .emoji { font-size: 22px; }
+
+  /* ---- Botones ---- */
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 1px solid var(--color-borde);
+    background: var(--color-tarjeta);
+    color: var(--color-texto);
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background .15s, border-color .15s, transform .05s;
+    white-space: nowrap;
+  }
+  button:hover { border-color: var(--color-primario); }
+  button:active { transform: translateY(1px); }
+  button.primario {
+    background: var(--color-primario);
+    border-color: var(--color-primario);
+    color: #fff;
+  }
+  button.primario:hover { background: var(--color-primario-oscuro); }
+  button.peligro { color: var(--color-peligro); border-color: #f3c4c5; }
+  button.peligro:hover { background: #fdecec; border-color: var(--color-peligro); }
+  button.pequeno { padding: 5px 9px; font-size: 13px; border-radius: 7px; }
+
+  /* ---- Leyenda de categorías ---- */
+  .leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding: 10px 18px;
+    background: var(--color-tarjeta);
+    border-bottom: 1px solid var(--color-borde);
+  }
+  .leyenda .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--color-texto-suave);
+  }
+  .leyenda .punto {
+    width: 13px; height: 13px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .leyenda .item.libre .punto {
+    background: repeating-linear-gradient(45deg, var(--color-libre), var(--color-libre) 3px, #7fd3ba 3px, #7fd3ba 6px);
+  }
+
+  /* ---- Contenedor de la semana ---- */
+  main {
+    padding: 16px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+
+  .semana {
+    display: grid;
+    /* En pantallas anchas caben varios días; se ajusta solo. En móvil, uno por fila. */
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 14px;
+  }
+
+  /* ---- Tarjeta de cada día ---- */
+  .dia {
+    background: var(--color-tarjeta);
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .dia .cabecera {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--color-borde);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fbfcfe;
+  }
+  .dia .cabecera .nombre-dia {
+    font-weight: 600;
+    font-size: 14px;
+    margin-right: auto;
+  }
+  .dia .cabecera button { padding: 3px 6px; font-size: 12px; }
+
+  /* Sub-cabecera con los nombres de las dos personas sobre sus carriles */
+  .dia .personas-cab {
+    display: grid;
+    grid-template-columns: 38px 1fr 1fr;
+    font-size: 11px;
+    color: var(--color-texto-suave);
+    border-bottom: 1px solid var(--color-borde);
+    text-align: center;
+  }
+  .dia .personas-cab span { padding: 4px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dia .personas-cab span + span { border-left: 1px solid var(--color-borde); }
+
+  /* Cuerpo con la línea de tiempo (gutter) + dos carriles */
+  .dia .cuerpo {
+    position: relative;
+    display: grid;
+    grid-template-columns: 38px 1fr 1fr;
+  }
+
+  .gutter {
+    position: relative;
+    border-right: 1px solid var(--color-borde);
+  }
+  .gutter .marca-hora {
+    position: absolute;
+    left: 0; right: 2px;
+    text-align: right;
+    font-size: 10px;
+    color: var(--color-texto-suave);
+    transform: translateY(-6px);
+    padding-right: 3px;
+  }
+
+  .carril {
+    position: relative;
+    border-left: 1px solid var(--color-borde);
+  }
+  .carril:first-of-type { border-left: none; }
+
+  /* Líneas horizontales que marcan cada hora, en el fondo de los carriles */
+  .linea-hora {
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 1px solid #eef1f7;
+    pointer-events: none;
+  }
+  .linea-media {
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 1px dashed #f2f4f9;
+    pointer-events: none;
+  }
+
+  /* Banda que resalta el tiempo LIBRE COMPARTIDO (ambos disponibles) */
+  .banda-libre {
+    position: absolute;
+    left: 0; right: 0;
+    background: rgba(41, 163, 122, 0.10);
+    border-top: 1px dashed var(--color-libre);
+    border-bottom: 1px dashed var(--color-libre);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .banda-libre .txt {
+    position: absolute;
+    top: 2px; left: 4px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--color-libre);
+    letter-spacing: .2px;
+  }
+
+  /* Cada bloque de actividad */
+  .bloque {
+    position: absolute;
+    left: 2px; right: 2px;
+    border-radius: 6px;
+    padding: 3px 5px;
+    font-size: 11px;
+    color: #fff;
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 1px 2px rgba(0,0,0,.12);
+    border: 1px solid rgba(0,0,0,.06);
+  }
+  .bloque .b-titulo { font-weight: 600; line-height: 1.15; }
+  .bloque .b-hora { font-size: 9.5px; opacity: .9; }
+  .bloque:hover { filter: brightness(1.05); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+
+  /* Texto de ayuda cuando el día está vacío */
+  .pista-vacio {
+    position: absolute;
+    top: 6px; left: 0; right: 0;
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--color-texto-suave);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* =========================================================================
+     VENTANAS MODALES (formularios emergentes)
+     ========================================================================= */
+  .modal-fondo {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 28, 45, 0.45);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 14px;
+    z-index: 100;
+    overflow-y: auto;
+  }
+  .modal-fondo.abierto { display: flex; }
+  .modal {
+    background: var(--color-tarjeta);
+    border-radius: var(--radio);
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+    margin: auto 0;
+  }
+  .modal h2 { margin: 0 0 16px; font-size: 17px; }
+  .campo { margin-bottom: 13px; }
+  .campo label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .campo input[type=text], .campo select, .campo input[type=time] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    font: inherit;
+    background: #fff;
+    color: var(--color-texto);
+  }
+  .campo input[type=color] {
+    width: 46px; height: 34px;
+    padding: 2px;
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    vertical-align: middle;
+    cursor: pointer;
+  }
+  .fila-doble { display: flex; gap: 10px; }
+  .fila-doble .campo { flex: 1; }
+  .acciones-modal {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  .acciones-modal .separador { margin-left: auto; }
+
+  /* Editor de categorías dentro de Configuración */
+  .cat-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .cat-fila {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cat-fila input[type=text] {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--color-borde);
+    border-radius: 7px;
+    font: inherit;
+  }
+
+  .aviso {
+    background: #eef3ff;
+    border: 1px solid #d5e0ff;
+    color: #2f4bbd;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    margin-bottom: 12px;
+  }
+
+  /* =========================================================================
+     VISTA DE IMPRESIÓN
+     Al imprimir (o "Guardar como PDF") se ocultan botones y se limpia el diseño.
+     ========================================================================= */
+  @media print {
+    header.barra { position: static; }
+    header.barra button, .dia .cabecera button, .no-imprimir { display: none !important; }
+    body { background: #fff; }
+    main { max-width: none; padding: 0; }
+    .semana { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .dia { box-shadow: none; break-inside: avoid; }
+    .bloque { color: #000 !important; }        /* mejor contraste en papel */
+    .pista-vacio { display: none; }
+  }
+
+  /* Ajustes para móviles muy pequeños */
+  @media (max-width: 420px) {
+    header.barra h1 { font-size: 16px; }
+    header.barra { padding: 10px 12px; }
+    main { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =========================================================================
+     BARRA SUPERIOR con el título y los botones de acción
+     ========================================================================= -->
+<header class="barra">
+  <h1><span class="emoji">🗓️</span> <span id="titulo-app">Cronograma semanal</span></h1>
+  <button class="primario" onclick="abrirNuevoBloque()">＋ Añadir bloque</button>
+  <button onclick="abrirConfig()">⚙️ Configuración</button>
+  <button onclick="exportarJSON()">⬇️ Exportar</button>
+  <button onclick="document.getElementById('archivo-importar').click()">⬆️ Importar</button>
+  <button onclick="window.print()">🖨️ Imprimir / PDF</button>
+  <!-- Campo de archivo oculto que se activa desde el botón "Importar" -->
+  <input type="file" id="archivo-importar" accept="application/json,.json" style="display:none" onchange="importarJSON(event)">
+</header>
+
+<!-- Leyenda de colores por categoría (se genera con JavaScript) -->
+<div class="leyenda" id="leyenda"></div>
+
+<!-- Contenedor donde se dibuja la semana completa -->
+<main>
+  <div class="semana" id="semana"></div>
+</main>
+
+<!-- =========================================================================
+     MODAL 1: Añadir / editar un bloque de actividad
+     ========================================================================= -->
+<div class="modal-fondo" id="modal-bloque">
+  <div class="modal">
+    <h2 id="modal-bloque-titulo">Nuevo bloque</h2>
+    <div class="campo">
+      <label for="b-titulo">Título</label>
+      <input type="text" id="b-titulo" placeholder="Ej: Desayuno, Gimnasio, Reunión...">
+    </div>
+    <div class="fila-doble">
+      <div class="campo">
+        <label for="b-persona">Persona</label>
+        <select id="b-persona"></select>
+      </div>
+      <div class="campo">
+        <label for="b-dia">Día</label>
+        <select id="b-dia"></select>
+      </div>
+    </div>
+    <div class="campo">
+      <label for="b-categoria">Categoría</label>
+      <select id="b-categoria"></select>
+    </div>
+    <div class="fila-doble">
+      <div class="campo">
+        <label for="b-inicio">Hora de inicio</label>
+        <select id="b-inicio"></select>
+      </div>
+      <div class="campo">
+        <label for="b-fin">Hora de fin</label>
+        <select id="b-fin"></select>
+      </div>
+    </div>
+    <div class="acciones-modal">
+      <button class="peligro" id="btn-eliminar-bloque" onclick="eliminarBloqueActual()">🗑️ Eliminar</button>
+      <button id="btn-duplicar-bloque" onclick="duplicarBloqueActual()">⧉ Duplicar</button>
+      <button class="separador" onclick="cerrarModal('modal-bloque')">Cancelar</button>
+      <button class="primario" onclick="guardarBloque()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL 2: Configuración general (personas, horario, categorías...)
+     ========================================================================= -->
+<div class="modal-fondo" id="modal-config">
+  <div class="modal">
+    <h2>⚙️ Configuración</h2>
+
+    <div class="fila-doble">
+      <div class="campo">
+        <label for="c-persona1">Nombre persona 1</label>
+        <input type="text" id="c-persona1">
+      </div>
+      <div class="campo">
+        <label for="c-persona2">Nombre persona 2</label>
+        <input type="text" id="c-persona2">
+      </div>
+    </div>
+
+    <div class="fila-doble">
+      <div class="campo">
+        <label for="c-inicio">Hora inicial visible</label>
+        <input type="time" id="c-inicio" step="1800">
+      </div>
+      <div class="campo">
+        <label for="c-fin">Hora final visible</label>
+        <input type="time" id="c-fin" step="1800">
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="c-granularidad">Granularidad de los bloques</label>
+      <select id="c-granularidad">
+        <option value="30">30 minutos</option>
+        <option value="60">60 minutos</option>
+      </select>
+    </div>
+
+    <div class="campo">
+      <label>Categorías (nombre y color)</label>
+      <div class="cat-lista" id="cat-lista"></div>
+      <button class="pequeno" onclick="agregarCategoriaFila()">＋ Añadir categoría</button>
+    </div>
+
+    <div class="acciones-modal">
+      <button class="peligro" onclick="borrarTodo()">Borrar todos los datos</button>
+      <button class="separador" onclick="cerrarModal('modal-config')">Cancelar</button>
+      <button class="primario" onclick="guardarConfig()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   LÓGICA DE LA APLICACIÓN (JavaScript)
+   ===========================================================================
+   Organización del código:
+   1. Configuración por defecto y estado.
+   2. Utilidades de tiempo.
+   3. Guardado/carga en localStorage.
+   4. Dibujado (render) de la semana.
+   5. Detección de tiempo libre compartido.
+   6. Formulario de bloques (añadir/editar/eliminar/duplicar).
+   7. Copiar un día a toda la semana.
+   8. Configuración (personas, horario, categorías).
+   9. Exportar / Importar / Imprimir.
+   =========================================================================== */
+
+/* --- Nombres de los días (Lunes a Domingo) --- */
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const DIAS_CORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+/* ---------------------------------------------------------------------------
+   1. CONFIGURACIÓN POR DEFECTO
+   >>> PERSONALIZAR <<< Si borran todos los datos, se vuelve a estos valores.
+   (Pero lo normal es cambiarlos desde el botón "Configuración".)
+   --------------------------------------------------------------------------- */
+function configPorDefecto() {
+  return {
+    personas: ["Ana", "Jeronimo"],   // Los dos nombres (respuesta dada)
+    horaInicio: 330,                  // 5:30 en minutos desde medianoche (5*60+30)
+    horaFin: 1350,                    // 22:30 en minutos (22*60+30)
+    granularidad: 30,                 // Tamaño de los bloques en minutos
+    // Las 8 categorías por defecto, cada una con su color:
+    categorias: [
+      { id: "trabajo",   nombre: "Trabajo",          color: "#4f6ef7" },
+      { id: "ejercicio", nombre: "Ejercicio",        color: "#e5484d" },
+      { id: "comidas",   nombre: "Comidas",          color: "#f5a623" },
+      { id: "sueno",     nombre: "Sueño",            color: "#7b61ff" },
+      { id: "hogar",     nombre: "Tareas del hogar", color: "#8b6f47" },
+      { id: "personal",  nombre: "Tiempo personal",  color: "#2aa5b8" },
+      { id: "pareja",    nombre: "Tiempo en pareja", color: "#e0407b" },
+      { id: "otros",     nombre: "Otros",            color: "#7a8699" },
+    ]
+  };
+}
+
+/* --- Estado en memoria --- */
+let config = configPorDefecto();
+let bloques = [];   // Lista de todos los bloques del cronograma
+let idEnEdicion = null;  // Id del bloque que se está editando (null = nuevo)
+
+/* Clave con la que se guardan los datos en el navegador */
+const CLAVE_ALMACEN = "cronograma_semanal_v1";
+
+/* ---------------------------------------------------------------------------
+   2. UTILIDADES DE TIEMPO
+   Trabajamos con "minutos desde medianoche" (ej: 8:30 = 510) porque es fácil
+   de sumar y comparar. Estas funciones convierten a/desde texto "HH:MM".
+   --------------------------------------------------------------------------- */
+function minutosATexto(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+function textoAMinutos(txt) {
+  const [h, m] = txt.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/* Genera un identificador único sencillo para cada bloque */
+function nuevoId() {
+  return "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/* ---------------------------------------------------------------------------
+   3. GUARDAR Y CARGAR (localStorage = memoria del navegador)
+   --------------------------------------------------------------------------- */
+function guardar() {
+  // Se guarda automáticamente después de cada cambio.
+  const datos = { config, bloques };
+  localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(datos));
+}
+
+function cargar() {
+  const crudo = localStorage.getItem(CLAVE_ALMACEN);
+  if (!crudo) return;  // Primera vez: se quedan los valores por defecto.
+  try {
+    const datos = JSON.parse(crudo);
+    if (datos.config)  config = datos.config;
+    if (datos.bloques) bloques = datos.bloques;
+  } catch (e) {
+    console.warn("No se pudieron leer los datos guardados:", e);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   4. DIBUJAR LA SEMANA COMPLETA
+   Reconstruye toda la pantalla a partir del estado (config + bloques).
+   Se llama cada vez que algo cambia.
+   --------------------------------------------------------------------------- */
+function render() {
+  document.getElementById("titulo-app").textContent =
+    "Cronograma de " + config.personas[0] + " y " + config.personas[1];
+
+  renderLeyenda();
+
+  const totalMin = config.horaFin - config.horaInicio;           // minutos visibles
+  const pxPorMin = parseFloat(getComputedStyle(document.documentElement)
+                    .getPropertyValue("--px-por-minuto")) || 0.62;
+  const alturaCuerpo = totalMin * pxPorMin;                      // alto de cada carril
+
+  const cont = document.getElementById("semana");
+  cont.innerHTML = "";
+
+  // Una tarjeta por cada día de la semana
+  for (let d = 0; d < 7; d++) {
+    const dia = document.createElement("div");
+    dia.className = "dia";
+
+    // --- Cabecera del día con botones de atajo ---
+    const cab = document.createElement("div");
+    cab.className = "cabecera";
+    cab.innerHTML = `
+      <span class="nombre-dia">${DIAS[d]}</span>
+      <button title="Copiar este día a toda la semana" onclick="copiarDiaATodos(${d})">📋 a semana</button>
+    `;
+    dia.appendChild(cab);
+
+    // --- Sub-cabecera con los nombres de las dos personas ---
+    const pc = document.createElement("div");
+    pc.className = "personas-cab";
+    pc.innerHTML = `<span></span><span title="${config.personas[0]}">${config.personas[0]}</span><span title="${config.personas[1]}">${config.personas[1]}</span>`;
+    dia.appendChild(pc);
+
+    // --- Cuerpo: gutter de horas + dos carriles ---
+    const cuerpo = document.createElement("div");
+    cuerpo.className = "cuerpo";
+    cuerpo.style.height = alturaCuerpo + "px";
+
+    // Gutter (columna de horas a la izquierda)
+    const gutter = document.createElement("div");
+    gutter.className = "gutter";
+    // Etiquetas de cada hora en punto dentro del rango visible
+    const primeraHora = Math.ceil(config.horaInicio / 60);
+    const ultimaHora = Math.floor(config.horaFin / 60);
+    for (let h = primeraHora; h <= ultimaHora; h++) {
+      const y = (h * 60 - config.horaInicio) * pxPorMin;
+      const marca = document.createElement("div");
+      marca.className = "marca-hora";
+      marca.style.top = y + "px";
+      marca.textContent = String(h).padStart(2, "0") + ":00";
+      gutter.appendChild(marca);
+    }
+    cuerpo.appendChild(gutter);
+
+    // Dos carriles (uno por persona)
+    const carriles = [];
+    for (let p = 0; p < 2; p++) {
+      const carril = document.createElement("div");
+      carril.className = "carril";
+      carril.dataset.dia = d;
+      carril.dataset.persona = p;
+
+      // Líneas de fondo por cada hora (y media hora si la granularidad es 30)
+      for (let h = primeraHora; h <= ultimaHora; h++) {
+        const y = (h * 60 - config.horaInicio) * pxPorMin;
+        const linea = document.createElement("div");
+        linea.className = "linea-hora";
+        linea.style.top = y + "px";
+        carril.appendChild(linea);
+        if (config.granularidad === 30 && (h * 60 + 30) < config.horaFin) {
+          const media = document.createElement("div");
+          media.className = "linea-media";
+          media.style.top = (y + 30 * pxPorMin) + "px";
+          carril.appendChild(media);
+        }
+      }
+
+      // Al hacer clic en una zona vacía del carril, se crea un bloque nuevo
+      // con ese día, esa persona y la hora aproximada donde se hizo clic.
+      carril.addEventListener("click", (ev) => {
+        if (ev.target !== carril) return; // ignorar clics sobre bloques ya existentes
+        const rect = carril.getBoundingClientRect();
+        const minRelativo = (ev.clientY - rect.top) / pxPorMin;
+        let inicio = config.horaInicio + Math.round(minRelativo / config.granularidad) * config.granularidad;
+        inicio = Math.max(config.horaInicio, Math.min(inicio, config.horaFin - config.granularidad));
+        abrirNuevoBloque({ dia: d, persona: p, inicio: inicio, fin: inicio + config.granularidad });
+      });
+
+      carriles.push(carril);
+      cuerpo.appendChild(carril);
+    }
+
+    // Pista visual si el día no tiene bloques
+    if (!bloques.some(b => b.dia === d)) {
+      const pista = document.createElement("div");
+      pista.className = "pista-vacio";
+      pista.textContent = "Toca aquí para añadir";
+      cuerpo.appendChild(pista);
+    }
+
+    // --- Dibujar las bandas de TIEMPO LIBRE COMPARTIDO (detrás de los bloques) ---
+    const bandas = calcularLibreCompartido(d);
+    bandas.forEach(([ini, fin]) => {
+      const banda = document.createElement("div");
+      banda.className = "banda-libre";
+      banda.style.top = (ini - config.horaInicio) * pxPorMin + "px";
+      banda.style.height = (fin - ini) * pxPorMin + "px";
+      // Solo mostramos el texto si la banda es suficientemente alta
+      if ((fin - ini) * pxPorMin > 22) {
+        banda.innerHTML = `<span class="txt">Libres juntos</span>`;
+      }
+      // La banda abarca los dos carriles: la insertamos en cada uno.
+      const b2 = banda.cloneNode(true);
+      carriles[0].appendChild(banda);
+      carriles[1].appendChild(b2);
+    });
+
+    // --- Dibujar los bloques de cada persona ---
+    bloques.filter(b => b.dia === d).forEach(b => {
+      const carril = carriles[b.persona];
+      if (!carril) return;
+      const cat = categoriaPorId(b.categoriaId);
+      const el = document.createElement("div");
+      el.className = "bloque";
+      el.style.top = (b.inicio - config.horaInicio) * pxPorMin + "px";
+      el.style.height = Math.max(14, (b.fin - b.inicio) * pxPorMin - 2) + "px";
+      el.style.background = cat ? cat.color : "#7a8699";
+      el.innerHTML = `
+        <div class="b-titulo">${escapar(b.titulo || "(sin título)")}</div>
+        <div class="b-hora">${minutosATexto(b.inicio)}–${minutosATexto(b.fin)}</div>
+      `;
+      el.addEventListener("click", (ev) => { ev.stopPropagation(); editarBloque(b.id); });
+      carril.appendChild(el);
+    });
+
+    dia.appendChild(cuerpo);   // Adjuntamos el cuerpo (gutter + carriles) a la tarjeta del día
+    cont.appendChild(dia);
+  }
+}
+
+/* Dibuja la leyenda de colores + el indicador de tiempo libre compartido */
+function renderLeyenda() {
+  const ley = document.getElementById("leyenda");
+  ley.innerHTML = "";
+  config.categorias.forEach(cat => {
+    const item = document.createElement("span");
+    item.className = "item";
+    item.innerHTML = `<span class="punto" style="background:${cat.color}"></span>${escapar(cat.nombre)}`;
+    ley.appendChild(item);
+  });
+  const libre = document.createElement("span");
+  libre.className = "item libre";
+  libre.innerHTML = `<span class="punto"></span>Tiempo libre compartido`;
+  ley.appendChild(libre);
+}
+
+/* Evita que un título con caracteres < > & rompa el HTML */
+function escapar(txt) {
+  return String(txt).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+}
+
+function categoriaPorId(id) {
+  return config.categorias.find(c => c.id === id) || config.categorias[config.categorias.length - 1];
+}
+
+/* ---------------------------------------------------------------------------
+   5. DETECCIÓN DE TIEMPO LIBRE COMPARTIDO
+   Recorremos el día en pasos de "granularidad". En cada paso miramos si las
+   DOS personas están libres (sin ningún bloque). Los tramos libres seguidos
+   se unen en bandas continuas para resaltarlos.
+   --------------------------------------------------------------------------- */
+function calcularLibreCompartido(dia) {
+  const paso = config.granularidad;
+  const bandas = [];
+  let inicioBanda = null;
+
+  for (let t = config.horaInicio; t < config.horaFin; t += paso) {
+    const ambosLibres = !personaOcupada(dia, 0, t, t + paso)
+                     && !personaOcupada(dia, 1, t, t + paso);
+    if (ambosLibres && inicioBanda === null) {
+      inicioBanda = t;                 // empieza un tramo libre
+    } else if (!ambosLibres && inicioBanda !== null) {
+      bandas.push([inicioBanda, t]);   // se cierra el tramo libre
+      inicioBanda = null;
+    }
+  }
+  if (inicioBanda !== null) bandas.push([inicioBanda, config.horaFin]);
+  return bandas;
+}
+
+/* ¿La persona tiene algún bloque que se solape con el intervalo [ini, fin)? */
+function personaOcupada(dia, persona, ini, fin) {
+  return bloques.some(b =>
+    b.dia === dia && b.persona === persona &&
+    b.inicio < fin && b.fin > ini   // condición de solapamiento
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   6. FORMULARIO DE BLOQUES: añadir, editar, guardar, eliminar, duplicar
+   --------------------------------------------------------------------------- */
+
+/* Rellena los desplegables de hora inicio/fin según el rango y la granularidad */
+function llenarSelectsHora() {
+  const selIni = document.getElementById("b-inicio");
+  const selFin = document.getElementById("b-fin");
+  selIni.innerHTML = "";
+  selFin.innerHTML = "";
+  for (let t = config.horaInicio; t <= config.horaFin; t += config.granularidad) {
+    if (t < config.horaFin) selIni.add(new Option(minutosATexto(t), t));
+    if (t > config.horaInicio) selFin.add(new Option(minutosATexto(t), t));
+  }
+}
+
+/* Rellena los desplegables de persona, día y categoría */
+function llenarSelectsBloque() {
+  const selP = document.getElementById("b-persona");
+  const selD = document.getElementById("b-dia");
+  const selC = document.getElementById("b-categoria");
+  selP.innerHTML = ""; selD.innerHTML = ""; selC.innerHTML = "";
+  config.personas.forEach((n, i) => selP.add(new Option(n, i)));
+  DIAS.forEach((n, i) => selD.add(new Option(n, i)));
+  config.categorias.forEach(c => selC.add(new Option(c.nombre, c.id)));
+  llenarSelectsHora();
+}
+
+/* Abre el formulario para un bloque NUEVO. Puede recibir valores iniciales
+   (por ejemplo cuando se hace clic en un carril). */
+function abrirNuevoBloque(pre = {}) {
+  idEnEdicion = null;
+  llenarSelectsBloque();
+  document.getElementById("modal-bloque-titulo").textContent = "Nuevo bloque";
+  document.getElementById("b-titulo").value = "";
+  document.getElementById("b-persona").value = pre.persona ?? 0;
+  document.getElementById("b-dia").value = pre.dia ?? 0;
+  document.getElementById("b-categoria").value = config.categorias[0].id;
+  document.getElementById("b-inicio").value = pre.inicio ?? config.horaInicio;
+  document.getElementById("b-fin").value = pre.fin ?? (config.horaInicio + config.granularidad);
+  // En un bloque nuevo no tiene sentido "Eliminar" ni "Duplicar"
+  document.getElementById("btn-eliminar-bloque").style.display = "none";
+  document.getElementById("btn-duplicar-bloque").style.display = "none";
+  abrirModal("modal-bloque");
+  document.getElementById("b-titulo").focus();
+}
+
+/* Abre el formulario para EDITAR un bloque existente */
+function editarBloque(id) {
+  const b = bloques.find(x => x.id === id);
+  if (!b) return;
+  idEnEdicion = id;
+  llenarSelectsBloque();
+  document.getElementById("modal-bloque-titulo").textContent = "Editar bloque";
+  document.getElementById("b-titulo").value = b.titulo;
+  document.getElementById("b-persona").value = b.persona;
+  document.getElementById("b-dia").value = b.dia;
+  document.getElementById("b-categoria").value = b.categoriaId;
+  document.getElementById("b-inicio").value = b.inicio;
+  document.getElementById("b-fin").value = b.fin;
+  document.getElementById("btn-eliminar-bloque").style.display = "";
+  document.getElementById("btn-duplicar-bloque").style.display = "";
+  abrirModal("modal-bloque");
+}
+
+/* Guarda el bloque (nuevo o editado) tras validar las horas */
+function guardarBloque() {
+  const inicio = parseInt(document.getElementById("b-inicio").value, 10);
+  const fin = parseInt(document.getElementById("b-fin").value, 10);
+  if (fin <= inicio) {
+    alert("La hora de fin debe ser posterior a la de inicio.");
+    return;
+  }
+  const datos = {
+    titulo: document.getElementById("b-titulo").value.trim(),
+    persona: parseInt(document.getElementById("b-persona").value, 10),
+    dia: parseInt(document.getElementById("b-dia").value, 10),
+    categoriaId: document.getElementById("b-categoria").value,
+    inicio, fin
+  };
+  if (idEnEdicion) {
+    // Editar: reemplazamos los datos del bloque existente
+    const b = bloques.find(x => x.id === idEnEdicion);
+    Object.assign(b, datos);
+  } else {
+    // Nuevo: lo añadimos a la lista
+    bloques.push({ id: nuevoId(), ...datos });
+  }
+  guardar();
+  cerrarModal("modal-bloque");
+  render();
+}
+
+/* Elimina el bloque que se está editando */
+function eliminarBloqueActual() {
+  if (!idEnEdicion) return;
+  if (!confirm("¿Eliminar este bloque?")) return;
+  bloques = bloques.filter(b => b.id !== idEnEdicion);
+  guardar();
+  cerrarModal("modal-bloque");
+  render();
+}
+
+/* Duplica el bloque actual (crea una copia idéntica que luego se puede mover) */
+function duplicarBloqueActual() {
+  if (!idEnEdicion) return;
+  const orig = bloques.find(b => b.id === idEnEdicion);
+  if (!orig) return;
+  bloques.push({ ...orig, id: nuevoId(), titulo: orig.titulo + " (copia)" });
+  guardar();
+  cerrarModal("modal-bloque");
+  render();
+}
+
+/* ---------------------------------------------------------------------------
+   7. ATAJO: copiar todos los bloques de un día al resto de la semana
+   --------------------------------------------------------------------------- */
+function copiarDiaATodos(dia) {
+  const delDia = bloques.filter(b => b.dia === dia);
+  if (delDia.length === 0) {
+    alert("Este día no tiene bloques para copiar.");
+    return;
+  }
+  if (!confirm(`Se copiarán los ${delDia.length} bloque(s) de ${DIAS[dia]} a los otros 6 días.\n\nLos bloques que ya existan en esos días se conservarán.\n¿Continuar?`)) {
+    return;
+  }
+  for (let d = 0; d < 7; d++) {
+    if (d === dia) continue;
+    delDia.forEach(b => {
+      bloques.push({ ...b, id: nuevoId(), dia: d });
+    });
+  }
+  guardar();
+  render();
+}
+
+/* ---------------------------------------------------------------------------
+   8. CONFIGURACIÓN: personas, horario, granularidad y categorías
+   --------------------------------------------------------------------------- */
+function abrirConfig() {
+  document.getElementById("c-persona1").value = config.personas[0];
+  document.getElementById("c-persona2").value = config.personas[1];
+  document.getElementById("c-inicio").value = minutosATexto(config.horaInicio);
+  document.getElementById("c-fin").value = minutosATexto(config.horaFin);
+  document.getElementById("c-granularidad").value = config.granularidad;
+  renderEditorCategorias();
+  abrirModal("modal-config");
+}
+
+/* Dibuja las filas editables de categorías dentro de Configuración */
+function renderEditorCategorias() {
+  const lista = document.getElementById("cat-lista");
+  lista.innerHTML = "";
+  config.categorias.forEach((cat, idx) => {
+    const fila = document.createElement("div");
+    fila.className = "cat-fila";
+    fila.innerHTML = `
+      <input type="color" value="${cat.color}" data-idx="${idx}" data-campo="color">
+      <input type="text" value="${escapar(cat.nombre)}" data-idx="${idx}" data-campo="nombre">
+      <button class="peligro pequeno" title="Eliminar categoría" onclick="eliminarCategoria(${idx})">🗑️</button>
+    `;
+    lista.appendChild(fila);
+  });
+}
+
+/* Añade una fila de categoría nueva (vacía) en el editor */
+function agregarCategoriaFila() {
+  config.categorias.push({ id: "cat" + nuevoId(), nombre: "Nueva categoría", color: "#9aa4b2" });
+  renderEditorCategorias();
+}
+
+/* Elimina una categoría del editor (debe quedar al menos una) */
+function eliminarCategoria(idx) {
+  if (config.categorias.length <= 1) {
+    alert("Debe existir al menos una categoría.");
+    return;
+  }
+  config.categorias.splice(idx, 1);
+  renderEditorCategorias();
+}
+
+/* Guarda todos los cambios de configuración */
+function guardarConfig() {
+  // Leer las filas de categorías del editor
+  const nuevasCats = [];
+  document.querySelectorAll("#cat-lista .cat-fila").forEach((fila, idx) => {
+    const color = fila.querySelector('[data-campo="color"]').value;
+    const nombre = fila.querySelector('[data-campo="nombre"]').value.trim() || "Sin nombre";
+    // Conservamos el id existente si lo hay (para no romper bloques ya creados)
+    const idExistente = config.categorias[idx] ? config.categorias[idx].id : "cat" + nuevoId();
+    nuevasCats.push({ id: idExistente, nombre, color });
+  });
+
+  const nuevoInicio = textoAMinutos(document.getElementById("c-inicio").value || "05:30");
+  const nuevoFin = textoAMinutos(document.getElementById("c-fin").value || "22:30");
+  if (nuevoFin <= nuevoInicio) {
+    alert("La hora final debe ser posterior a la hora inicial.");
+    return;
+  }
+
+  config.personas = [
+    document.getElementById("c-persona1").value.trim() || "Persona A",
+    document.getElementById("c-persona2").value.trim() || "Persona B"
+  ];
+  config.horaInicio = nuevoInicio;
+  config.horaFin = nuevoFin;
+  config.granularidad = parseInt(document.getElementById("c-granularidad").value, 10);
+  config.categorias = nuevasCats;
+
+  guardar();
+  cerrarModal("modal-config");
+  render();
+}
+
+/* Borra TODOS los datos y vuelve a la configuración por defecto */
+function borrarTodo() {
+  if (!confirm("Esto eliminará TODOS los bloques y volverá a la configuración inicial. ¿Seguro?")) return;
+  localStorage.removeItem(CLAVE_ALMACEN);
+  config = configPorDefecto();
+  bloques = [];
+  cerrarModal("modal-config");
+  render();
+}
+
+/* ---------------------------------------------------------------------------
+   9. EXPORTAR / IMPORTAR / (imprimir usa window.print del navegador)
+   --------------------------------------------------------------------------- */
+
+/* Descarga un archivo JSON con toda la información (respaldo) */
+function exportarJSON() {
+  const datos = JSON.stringify({ config, bloques }, null, 2);
+  const blob = new Blob([datos], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const fecha = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = "cronograma-" + fecha + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* Lee un archivo JSON exportado antes y reemplaza el cronograma actual */
+function importarJSON(evento) {
+  const archivo = evento.target.files[0];
+  if (!archivo) return;
+  const lector = new FileReader();
+  lector.onload = (e) => {
+    try {
+      const datos = JSON.parse(e.target.result);
+      if (!datos.config || !Array.isArray(datos.bloques)) {
+        throw new Error("El archivo no tiene el formato esperado.");
+      }
+      if (!confirm("Al importar se reemplazará el cronograma actual. ¿Continuar?")) return;
+      config = datos.config;
+      bloques = datos.bloques;
+      guardar();
+      render();
+      alert("Cronograma importado correctamente.");
+    } catch (err) {
+      alert("No se pudo importar el archivo: " + err.message);
+    }
+  };
+  lector.readAsText(archivo);
+  evento.target.value = "";  // permite volver a importar el mismo archivo si hace falta
+}
+
+/* ---------------------------------------------------------------------------
+   UTILIDADES DE VENTANAS MODALES
+   --------------------------------------------------------------------------- */
+function abrirModal(id) { document.getElementById(id).classList.add("abierto"); }
+function cerrarModal(id) { document.getElementById(id).classList.remove("abierto"); }
+
+// Cerrar un modal al hacer clic fuera de él (en el fondo oscuro)
+document.querySelectorAll(".modal-fondo").forEach(fondo => {
+  fondo.addEventListener("click", (ev) => {
+    if (ev.target === fondo) fondo.classList.remove("abierto");
+  });
+});
+// Cerrar cualquier modal con la tecla Escape
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") {
+    document.querySelectorAll(".modal-fondo.abierto").forEach(m => m.classList.remove("abierto"));
+  }
+});
+
+/* ---------------------------------------------------------------------------
+   ARRANQUE: cargar datos guardados y dibujar la pantalla
+   --------------------------------------------------------------------------- */
+cargar();
+render();
+</script>
+</body>
+</html>
