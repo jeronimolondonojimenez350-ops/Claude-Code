@@ -4,6 +4,9 @@ Una aplicación web sencilla para planear y comparar las rutinas semanales de do
 personas (por defecto **Ana** y **Jeronimo**). Todo vive en un **único archivo
 HTML autónomo**: no necesita internet, ni servidor, ni instalar nada.
 
+> Esta versión implementa el rediseño "Modernist" creado en claude.ai/design:
+> cuatro vistas, modo oscuro y bloques que se arrastran con el mouse.
+
 ---
 
 ## ▶️ Cómo abrirlo
@@ -11,9 +14,10 @@ HTML autónomo**: no necesita internet, ni servidor, ni instalar nada.
 1. Descarga o localiza el archivo **`cronograma.html`**.
 2. Haz **doble clic** sobre él. Se abrirá en tu navegador (Chrome, Edge, Firefox,
    Safari…).
-3. ¡Listo! Ya puedes empezar a usarlo.
+3. ¡Listo! La primera vez verás unos bloques de ejemplo que puedes editar o
+   borrar. Si ya usabas la versión anterior, tus datos se migran solos.
 
-> No hace falta conexión a internet. Puedes usarlo sin problema estando sin red.
+> No hace falta conexión a internet. Funciona totalmente sin red.
 
 ---
 
@@ -21,31 +25,36 @@ HTML autónomo**: no necesita internet, ni servidor, ni instalar nada.
 
 | Función | Cómo se usa |
 |---|---|
-| **Ver la semana completa** | Lunes a Domingo, con una línea de tiempo por día. |
-| **Comparar dos rutinas** | Cada día tiene dos carriles lado a lado, uno por persona. |
-| **Añadir un bloque** | Botón **➕ Añadir bloque**, o haz clic sobre un hueco vacío del día/persona. |
-| **Editar o eliminar** | Haz clic sobre un bloque ya creado. |
-| **Duplicar un bloque** | Dentro de la edición del bloque, botón **⧉ Duplicar**. |
-| **Copiar un día a toda la semana** | Botón **📋 a semana** en la cabecera de cada día. |
-| **Ver tiempo libre juntos** | Las franjas en las que **ambos** están libres se resaltan en verde ("Libres juntos"). Ideal para planear tiempo en pareja. |
-| **Guardado automático** | Todo se guarda solo en el navegador. Al cerrar y volver a abrir, tus datos siguen ahí. |
-| **Exportar / Importar** | Botones **⬇️ Exportar** (guarda un respaldo `.json`) y **⬆️ Importar** (recupera un respaldo). |
-| **Imprimir o guardar en PDF** | Botón **🖨️ Imprimir / PDF**: se genera una vista limpia sin botones. |
-| **Móvil** | El diseño se adapta: en el teléfono los días se apilan uno debajo de otro. |
+| **Vista Semana** | Lunes a Domingo con la línea de tiempo y dos carriles por día (uno por persona). |
+| **Vista Día** | Un solo día en grande, con flechas ‹ › para navegar. Ideal en el móvil. |
+| **Vista Lista** | Todos los bloques en una tabla ordenada; clic en una fila para editar. |
+| **Vista Resumen** | Horas planificadas por categoría de cada persona, con barras comparables. |
+| **Añadir un bloque** | Botón **+ Añadir bloque**, o clic sobre un hueco vacío del calendario. |
+| **Mover un bloque** | **Arrástralo** con el mouse: puedes cambiarlo de hora, de día y hasta de persona. |
+| **Cambiar su duración** | Arrastra el **borde inferior** del bloque hacia arriba o abajo. |
+| **Editar o eliminar** | Un clic (sin arrastrar) sobre el bloque abre el editor, con botones Eliminar y Duplicar. |
+| **Copiar un día a toda la semana** | Icono 📋 en la cabecera de cada día (o el botón grande en la vista Día). |
+| **Ver tiempo libre juntos** | Las franjas donde **ambos** están libres se resaltan en verde ("Libres juntos"). |
+| **Línea de "ahora"** | Una línea roja marca la hora actual sobre el día de hoy (etiqueta HOY). |
+| **Modo claro / oscuro** | Botón 🌙/☀️ en la barra superior; se recuerda tu elección. |
+| **Guardado automático** | Todo se guarda solo en el navegador; al volver a abrir sigue ahí. |
+| **Exportar / Importar** | Botones ⬇️/⬆️ para guardar y recuperar un respaldo `.json`. |
+| **Imprimir o PDF** | Imprime con **Ctrl+P** (o menú del navegador): sale una vista limpia sin botones. |
+| **Móvil** | La semana se desplaza horizontalmente; la vista Día es perfecta para el teléfono. |
 
 ---
 
 ## ⚙️ Cómo personalizarlo (sin programar)
 
-Abre el botón **⚙️ Configuración** en la parte superior. Desde ahí puedes cambiar:
+Abre el botón **⚙️ Configuración** (icono de controles) en la barra superior:
 
 - **Los nombres** de las dos personas.
-- El **rango horario visible** del día (por defecto **5:30 a 22:30**).
-- La **granularidad** de los bloques: **30 o 60 minutos** (por defecto 30).
-- Las **categorías** de actividad y su **color**: puedes añadir, renombrar,
-  cambiar el color o eliminar categorías.
+- El **rango horario visible** del día (por defecto **6:00 a 23:00**).
+- La **precisión** de los bloques: **15, 30 o 60 minutos** (por defecto 30).
+- Las **categorías** de actividad y su **color**: añadir, renombrar, recolorear
+  o eliminar.
 
-Los cambios se aplican y se guardan al pulsar **Guardar cambios**.
+Los cambios se aplican y guardan al pulsar **Guardar cambios**.
 
 ### Categorías por defecto
 
@@ -56,15 +65,16 @@ Tiempo en pareja · Otros
 
 ## 🎨 Personalización avanzada (opcional, editando el archivo)
 
-Si te animas a abrir `cronograma.html` con un editor de texto, encontrarás
-comentarios en español y varias marcas **`>>> PERSONALIZAR <<<`** que señalan las
-zonas fáciles de tocar, por ejemplo:
+Si abres `cronograma.html` con un editor de texto encontrarás comentarios en
+español y marcas **`>>> PERSONALIZAR <<<`** en las zonas fáciles de tocar:
 
-- La **paleta de colores** de la interfaz (al inicio, dentro de `:root`).
-- La **altura de los bloques** (variable `--px-por-minuto`: súbela para bloques
-  más altos, bájala para una vista más compacta).
-- Los **valores por defecto** (función `configPorDefecto`), que se usan si alguna
-  vez pulsas "Borrar todos los datos".
+- La **paleta de colores** de los temas claro y oscuro (variables al inicio).
+- La **densidad del calendario** (`PX_POR_MIN`: súbelo para bloques más altos).
+- La **línea de "ahora"** (`LINEA_AHORA`: ponla en `false` para ocultarla).
+- Los **valores por defecto** (función `configPorDefecto`).
+
+La tipografía del diseño es *Archivo*; si la tienes instalada se usa, y si no,
+se usa la fuente del sistema (así el archivo sigue sin depender de internet).
 
 ---
 
@@ -72,11 +82,12 @@ zonas fáciles de tocar, por ejemplo:
 
 - Los datos se guardan en el **almacenamiento local del navegador**
   (`localStorage`). Son privados y quedan en tu equipo.
-- Como están ligados a ese navegador, conviene **exportar un respaldo `.json`**
-  de vez en cuando (botón **⬇️ Exportar**), sobre todo antes de cambiar de
-  computadora o de limpiar el navegador.
-- Para pasar el cronograma a otro equipo: **Exporta** en uno e **Importa** en el
-  otro.
+- Si venías de la **versión anterior**, tus bloques y configuración se migran
+  automáticamente la primera vez que abras esta versión.
+- Conviene **exportar un respaldo `.json`** de vez en cuando (botón ⬇️), sobre
+  todo antes de cambiar de computadora o limpiar el navegador.
+- Para pasar el cronograma a otro equipo: **Exporta** en uno e **Importa** en
+  el otro.
 
 ---
 
@@ -87,8 +98,9 @@ zonas fáciles de tocar, por ejemplo:
 **¿Se pierden los datos al cerrar?** No, se guardan solos. Solo se borrarían si
 limpias los datos del navegador o pulsas "Borrar todos los datos".
 
-**¿Puedo usarlo en el celular?** Sí, ábrelo en el navegador del teléfono. También
-puedes exportar el `.json` y abrirlo en otro dispositivo importándolo.
+**¿Puedo arrastrar bloques en el celular?** El arrastre está pensado para
+mouse; en el teléfono usa un toque sobre el bloque para abrir el editor y
+cambiar las horas desde ahí.
 
-**¿Cómo lo comparto con mi pareja?** Envíale el archivo `cronograma.html` (y, si
-quieres, un respaldo `.json` para que tenga los mismos datos e lo importe).
+**¿Cómo lo comparto con mi pareja?** Envíale el archivo `cronograma.html` (y,
+si quieres, un respaldo `.json` para que importe los mismos datos).

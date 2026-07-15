@@ -1,18 +1,26 @@
 <!--
   ============================================================================
-  CRONOGRAMA SEMANAL PARA DOS PERSONAS
+  CRONOGRAMA SEMANAL PARA DOS PERSONAS — v2 (diseño "Modernist")
   ----------------------------------------------------------------------------
   Aplicación web de una sola página, 100% autónoma (HTML + CSS + JavaScript
   puro). No necesita internet, ni servidor, ni instalar nada: basta con abrir
   este archivo con doble clic en cualquier navegador moderno.
 
-  Todo el código está comentado en español para que puedan entenderlo y
-  modificarlo sin ser programadores. Las partes que quizá quieran tocar están
-  marcadas con el rótulo  >>> PERSONALIZAR <<<
+  Novedades de esta versión (implementa el diseño Cronograma.dc.html del
+  proyecto de claude.ai/design):
+    • Cuatro vistas: Semana, Día, Lista y Resumen (horas por categoría).
+    • Modo claro / oscuro.
+    • Arrastrar bloques con el mouse para moverlos, y estirar su borde
+      inferior para cambiar la duración.
+    • Línea roja de "ahora" sobre el día de hoy.
+    • Precisión configurable: 15, 30 o 60 minutos.
+    • Migra automáticamente los datos guardados de la versión anterior.
 
-  Los datos se guardan automáticamente en el propio navegador (localStorage),
-  así que no se pierden al cerrar. También pueden exportarlos a un archivo
-  JSON de respaldo e importarlos de nuevo cuando quieran.
+  Todo el código está comentado en español. Las partes pensadas para tocar
+  están marcadas con  >>> PERSONALIZAR <<<
+
+  Los datos se guardan solos en el navegador (localStorage) y también se
+  pueden exportar/importar como archivo JSON de respaldo.
   ============================================================================
 -->
 <!DOCTYPE html>
@@ -23,823 +31,1031 @@
 <title>Cronograma semanal</title>
 <style>
   /* =========================================================================
-     ESTILOS (CSS)
-     Aquí se define la apariencia. Los colores principales están al inicio,
-     como "variables", para que sea fácil cambiarlos en un solo lugar.
+     TOKENS DEL SISTEMA DE DISEÑO "MODERNIST"
+     Colores, tipografía, espaciado y sombras. Cambiarlos aquí re-tiñe toda
+     la aplicación. (Esquinas rectas: los radios valen 0 a propósito.)
      ========================================================================= */
-
   :root {
-    /* >>> PERSONALIZAR <<< Paleta general de la interfaz */
-    --color-fondo: #f4f6fb;
-    --color-tarjeta: #ffffff;
-    --color-texto: #1f2733;
-    --color-texto-suave: #6b7684;
-    --color-borde: #e2e7f0;
-    --color-primario: #4f6ef7;
-    --color-primario-oscuro: #3a56d4;
-    --color-peligro: #e5484d;
-    --color-libre: #29a37a;          /* Resaltado de tiempo libre compartido */
-    --sombra: 0 1px 3px rgba(20, 30, 60, 0.08), 0 4px 12px rgba(20, 30, 60, 0.05);
-    --radio: 12px;
+    /* >>> PERSONALIZAR <<< Paleta del tema claro */
+    --color-bg: #f3f2f2;
+    --color-surface: #eae9e9;
+    --color-text: #201e1d;
+    --color-accent: #ec3013;
+    --color-accent-600: #dd2b0f;
+    --color-accent-700: #ae1800;
+    --color-accent-100: #fff2ef;
+    --color-accent-800: #7c1405;
+    --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+    --color-neutral-900: #2d2b2b;
 
-    /* Altura del carril de un día = minutos visibles * este factor (px por minuto).
-       Súbelo para bloques más altos, bájalo para una vista más compacta. */
-    --px-por-minuto: 0.62;
+    /* Color del resaltado de "tiempo libre compartido" */
+    --color-libre: #3f7d6c;
+
+    /* La fuente del diseño es "Archivo"; si no está instalada se usa la del
+       sistema (así el archivo sigue funcionando sin internet). */
+    --font-heading: "Archivo", system-ui, sans-serif;
+    --font-body: "Archivo", system-ui, sans-serif;
+
+    --radius-md: 0px;
+    --radius-lg: 0px;
+
+    --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+    --shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+    --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
   }
 
-  * { box-sizing: border-box; }
+  /* >>> PERSONALIZAR <<< Paleta del tema oscuro (se activa con el botón 🌙) */
+  body[data-theme="dark"] {
+    --color-bg: #1a1918;
+    --color-surface: #262423;
+    --color-text: #f1efee;
+    --color-divider: color-mix(in srgb, #f1efee 35%, transparent);
+    --color-accent-100: #4d170e;
+    --color-accent-800: #ffc4b8;
+    --color-libre: #5fae97;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.55);
+    --shadow-md: 0 3px 10px rgba(0,0,0,.55);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,.65);
+  }
+
+  /* =========================================================================
+     BASE Y COMPONENTES DEL SISTEMA (botones, formularios, tablas, diálogos)
+     ========================================================================= */
+  *, *::before, *::after { box-sizing: border-box; }
 
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: var(--color-fondo);
-    color: var(--color-texto);
-    line-height: 1.4;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* ---- Barra superior ---- */
-  header.barra {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    background: var(--color-tarjeta);
-    border-bottom: 1px solid var(--color-borde);
-    padding: 12px 18px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-  }
-  header.barra h1 {
-    font-size: 18px;
-    margin: 0;
-    margin-right: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  header.barra h1 .emoji { font-size: 22px; }
-
-  /* ---- Botones ---- */
-  button {
-    font: inherit;
-    cursor: pointer;
-    border: 1px solid var(--color-borde);
-    background: var(--color-tarjeta);
-    color: var(--color-texto);
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: background .15s, border-color .15s, transform .05s;
-    white-space: nowrap;
-  }
-  button:hover { border-color: var(--color-primario); }
-  button:active { transform: translateY(1px); }
-  button.primario {
-    background: var(--color-primario);
-    border-color: var(--color-primario);
-    color: #fff;
-  }
-  button.primario:hover { background: var(--color-primario-oscuro); }
-  button.peligro { color: var(--color-peligro); border-color: #f3c4c5; }
-  button.peligro:hover { background: #fdecec; border-color: var(--color-peligro); }
-  button.pequeno { padding: 5px 9px; font-size: 13px; border-radius: 7px; }
-
-  /* ---- Leyenda de categorías ---- */
-  .leyenda {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-    padding: 10px 18px;
-    background: var(--color-tarjeta);
-    border-bottom: 1px solid var(--color-borde);
-  }
-  .leyenda .item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--color-texto-suave);
-  }
-  .leyenda .punto {
-    width: 13px; height: 13px;
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-  .leyenda .item.libre .punto {
-    background: repeating-linear-gradient(45deg, var(--color-libre), var(--color-libre) 3px, #7fd3ba 3px, #7fd3ba 6px);
-  }
-
-  /* ---- Contenedor de la semana ---- */
-  main {
-    padding: 16px;
-    max-width: 1500px;
-    margin: 0 auto;
-  }
-
-  .semana {
-    display: grid;
-    /* En pantallas anchas caben varios días; se ajusta solo. En móvil, uno por fila. */
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 14px;
-  }
-
-  /* ---- Tarjeta de cada día ---- */
-  .dia {
-    background: var(--color-tarjeta);
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    box-shadow: var(--sombra);
-    overflow: hidden;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    transition: background .25s, color .25s;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
-  .dia .cabecera {
-    padding: 9px 10px;
-    border-bottom: 1px solid var(--color-borde);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #fbfcfe;
-  }
-  .dia .cabecera .nombre-dia {
-    font-weight: 600;
-    font-size: 14px;
-    margin-right: auto;
-  }
-  .dia .cabecera button { padding: 3px 6px; font-size: 12px; }
 
-  /* Sub-cabecera con los nombres de las dos personas sobre sus carriles */
-  .dia .personas-cab {
-    display: grid;
-    grid-template-columns: 38px 1fr 1fr;
-    font-size: 11px;
-    color: var(--color-texto-suave);
-    border-bottom: 1px solid var(--color-borde);
-    text-align: center;
-  }
-  .dia .personas-cab span { padding: 4px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dia .personas-cab span + span { border-left: 1px solid var(--color-borde); }
+  :focus { outline: none; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  ::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
 
-  /* Cuerpo con la línea de tiempo (gutter) + dos carriles */
-  .dia .cuerpo {
-    position: relative;
-    display: grid;
-    grid-template-columns: 38px 1fr 1fr;
+  /* — botones — */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; text-decoration: none;
+    font-family: var(--font-heading); font-weight: 800;
+    font-size: 14px; line-height: 1.2; color: var(--color-text);
+    background: transparent; border: 1px solid transparent;
+    padding: 8px 14px; border-radius: var(--radius-md);
   }
+  .btn svg { display: block; }
+  .btn-primary { background: var(--color-accent); color: var(--color-bg); }
+  .btn-primary:hover { background: var(--color-accent-600); }
+  .btn-primary:active { background: var(--color-accent-700); }
+  .btn-secondary { border-color: var(--color-divider); }
+  .btn-secondary:hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .btn-secondary:active { background: color-mix(in srgb, var(--color-text) 14%, transparent); }
+  .btn-ghost { color: var(--color-accent); padding-inline: 4px; }
+  .btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .btn-icon { width: 36px; height: 36px; padding: 0; }
 
-  .gutter {
-    position: relative;
-    border-right: 1px solid var(--color-borde);
+  /* — control segmentado (selector de vista) — */
+  .seg {
+    display: inline-flex; overflow: hidden;
+    border: 1px solid var(--color-divider); border-radius: var(--radius-md);
   }
-  .gutter .marca-hora {
-    position: absolute;
-    left: 0; right: 2px;
-    text-align: right;
-    font-size: 10px;
-    color: var(--color-texto-suave);
-    transform: translateY(-6px);
-    padding-right: 3px;
+  .seg-opt {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; font-size: 13px; cursor: pointer;
   }
+  .seg-opt input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+  .seg-opt + .seg-opt { border-left: 1px solid var(--color-divider); }
+  .seg-opt:has(input:checked) { background: var(--color-accent); color: var(--color-bg); }
+  .seg-opt:not(:has(input:checked)):hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
 
-  .carril {
-    position: relative;
-    border-left: 1px solid var(--color-borde);
+  /* — formularios — */
+  .field > label {
+    display: block; font-size: 12px; margin-bottom: 5px;
+    color: color-mix(in srgb, var(--color-text) 70%, transparent);
   }
-  .carril:first-of-type { border-left: none; }
+  .input {
+    width: 100%; min-height: 36px; padding: 6px 10px; font: inherit;
+    font-size: 14px; color: var(--color-text); caret-color: var(--color-accent);
+    background: var(--color-surface);
+    border: 1px solid var(--color-divider); border-radius: var(--radius-md);
+  }
+  .input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+  .input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
 
-  /* Líneas horizontales que marcan cada hora, en el fondo de los carriles */
-  .linea-hora {
-    position: absolute;
-    left: 0; right: 0;
-    border-top: 1px solid #eef1f7;
-    pointer-events: none;
-  }
-  .linea-media {
-    position: absolute;
-    left: 0; right: 0;
-    border-top: 1px dashed #f2f4f9;
-    pointer-events: none;
+  /* — etiqueta pequeña (HOY) — */
+  .tag {
+    display: inline-flex; align-items: center; font-size: 9px;
+    letter-spacing: .02em; padding: 1px 6px; font-weight: 600;
+    background: var(--color-accent-100); color: var(--color-accent-800);
   }
 
-  /* Banda que resalta el tiempo LIBRE COMPARTIDO (ambos disponibles) */
+  /* — tarjetas (vista Resumen) — */
+  .card {
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 20px; border-radius: var(--radius-md); background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+  .card-kicker { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent); }
+
+  /* — tabla (vista Lista) — */
+  .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .table th {
+    text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 60%, transparent);
+    padding: 8px; border-bottom: 2px solid var(--color-divider);
+  }
+  .table td { padding: 8px; border-bottom: 1px solid var(--color-divider); }
+  .table tbody tr:hover { background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+
+  /* — diálogos (modales) — */
+  .dialog-backdrop {
+    position: fixed; inset: 0; display: grid; place-items: center;
+    padding: 16px; z-index: 100;
+    background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+  }
+  .dialog-backdrop[hidden] { display: none; }
+  .dialog {
+    width: min(440px, 100%); display: flex; flex-direction: column; gap: 12px;
+    padding: 16px; border-radius: var(--radius-lg);
+    background: var(--color-surface); box-shadow: var(--shadow-lg);
+  }
+  .dialog-title { font-family: var(--font-heading); font-weight: 800; font-size: 20px; }
+  .dialog-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-start; flex-wrap: wrap; }
+  .dialog-actions .derecha { margin-left: auto; display: inline-flex; gap: 8px; }
+
+  /* =========================================================================
+     ESTILOS PROPIOS DE LA APLICACIÓN
+     ========================================================================= */
+
+  /* — barra superior — */
+  header.nav {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 24px; position: sticky; top: 0; z-index: 50;
+    background: var(--color-bg);
+    border-bottom: 2px solid var(--color-divider);
+  }
+  .nav-titulo { margin-right: auto; min-width: 200px; }
+  .nav-kicker {
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--color-accent); font-weight: 600;
+  }
+  .nav-personas { font-family: var(--font-heading); font-weight: 800; font-size: 20px; line-height: 1.1; }
+  .nav-acciones { display: flex; gap: 8px; align-items: center; }
+
+  /* — leyenda — */
+  .leyenda {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center;
+    padding: 8px 24px; border-bottom: 1px solid var(--color-divider);
+  }
+  .leyenda-item {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    color: color-mix(in srgb, var(--color-text) 65%, transparent);
+  }
+  .leyenda-chip { width: 11px; height: 11px; flex: none; }
+  .leyenda-item.libre .leyenda-chip {
+    background: repeating-linear-gradient(45deg, var(--color-libre), var(--color-libre) 3px, transparent 3px, transparent 6px);
+    border: 1px dashed var(--color-libre);
+  }
+
+  /* — subbarra de la vista Día — */
+  .subbar-dia { display: flex; align-items: center; gap: 10px; padding: 12px 24px 0; }
+  .subbar-dia[hidden] { display: none; }
+  .subbar-dia .nombre { font-family: var(--font-heading); font-weight: 800; font-size: 22px; min-width: 150px; }
+
+  /* — calendario (Semana / Día) — */
+  .vista-scroll { flex: 1; overflow: auto; padding: 14px 24px 40px; animation: vista-entra .25s ease; }
+  @keyframes vista-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .cab-dia { border-left: 1px solid var(--color-divider); padding: 6px 10px 5px; }
+  .cab-dia .fila { display: flex; align-items: center; gap: 8px; }
+  .cab-dia .nombre {
+    font-family: var(--font-heading); font-weight: 800; font-size: 13px;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  .cab-dia .personas { display: grid; grid-template-columns: 1fr 1fr; margin-top: 3px; }
+  .cab-dia .personas span {
+    font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-text) 50%, transparent);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cab-dia .personas span + span { padding-left: 8px; }
+  .btn-copiar-mini { width: 22px; height: 22px; margin-left: auto; opacity: .55; }
+  .btn-copiar-mini:hover { opacity: 1; }
+
+  .divisor-2 { height: 2px; background: var(--color-divider); }
+
+  .col-dia { position: relative; border-left: 1px solid var(--color-divider); }
+  .gutter { position: relative; }
+  .marca-hora {
+    position: absolute; right: 8px; font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  }
+  .linea-hora { position: absolute; left: 0; right: 0; border-top: 1px solid color-mix(in srgb, var(--color-text) 11%, transparent); pointer-events: none; }
+  .linea-media { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in srgb, var(--color-text) 6%, transparent); pointer-events: none; }
+
+  /* Banda de tiempo libre compartido (los dos disponibles a la vez) */
   .banda-libre {
-    position: absolute;
-    left: 0; right: 0;
-    background: rgba(41, 163, 122, 0.10);
+    position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none;
+    background: color-mix(in srgb, var(--color-libre) 12%, transparent);
     border-top: 1px dashed var(--color-libre);
     border-bottom: 1px dashed var(--color-libre);
-    pointer-events: none;
-    z-index: 1;
   }
   .banda-libre .txt {
-    position: absolute;
-    top: 2px; left: 4px;
-    font-size: 9px;
-    font-weight: 600;
+    position: absolute; top: 2px; left: 4px;
+    font-size: 9px; font-weight: 600; letter-spacing: .2px;
     color: var(--color-libre);
-    letter-spacing: .2px;
   }
 
-  /* Cada bloque de actividad */
+  .carriles { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+  .carril { position: relative; cursor: copy; }
+  .carril:hover { background: color-mix(in srgb, var(--color-text) 3%, transparent); }
+  .carril.p2 { border-left: 1px dashed color-mix(in srgb, var(--color-text) 14%, transparent); }
+
   .bloque {
-    position: absolute;
-    left: 2px; right: 2px;
-    border-radius: 6px;
-    padding: 3px 5px;
-    font-size: 11px;
-    color: #fff;
-    overflow: hidden;
-    cursor: pointer;
-    z-index: 2;
-    box-shadow: 0 1px 2px rgba(0,0,0,.12);
-    border: 1px solid rgba(0,0,0,.06);
+    position: absolute; left: 3px; right: 3px;
+    padding: 3px 6px; overflow: hidden; z-index: 2;
+    cursor: grab; box-shadow: var(--shadow-sm);
+    transition: top .15s ease, height .15s ease;
   }
-  .bloque .b-titulo { font-weight: 600; line-height: 1.15; }
-  .bloque .b-hora { font-size: 9.5px; opacity: .9; }
-  .bloque:hover { filter: brightness(1.05); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+  .bloque:hover { box-shadow: var(--shadow-md); filter: brightness(1.06); }
+  .bloque.arrastrando {
+    z-index: 20; cursor: grabbing; opacity: .92;
+    box-shadow: var(--shadow-lg); transition: none;
+  }
+  .bloque .b-titulo { font-weight: 600; font-size: 11px; line-height: 1.25; overflow: hidden; }
+  .bloque .b-hora { font-size: 9.5px; opacity: .8; }
+  .bloque .b-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
 
-  /* Texto de ayuda cuando el día está vacío */
-  .pista-vacio {
-    position: absolute;
-    top: 6px; left: 0; right: 0;
-    text-align: center;
-    font-size: 10.5px;
-    color: var(--color-texto-suave);
-    pointer-events: none;
-    z-index: 1;
+  .linea-ahora {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: var(--color-accent); z-index: 6; pointer-events: none;
   }
 
-  /* =========================================================================
-     VENTANAS MODALES (formularios emergentes)
-     ========================================================================= */
-  .modal-fondo {
-    position: fixed;
-    inset: 0;
-    background: rgba(20, 28, 45, 0.45);
-    display: none;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 24px 14px;
-    z-index: 100;
-    overflow-y: auto;
-  }
-  .modal-fondo.abierto { display: flex; }
-  .modal {
-    background: var(--color-tarjeta);
-    border-radius: var(--radio);
-    box-shadow: 0 20px 60px rgba(0,0,0,.3);
-    width: 100%;
-    max-width: 440px;
-    padding: 20px;
-    margin: auto 0;
-  }
-  .modal h2 { margin: 0 0 16px; font-size: 17px; }
-  .campo { margin-bottom: 13px; }
-  .campo label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
-  .campo input[type=text], .campo select, .campo input[type=time] {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--color-borde);
-    border-radius: 8px;
-    font: inherit;
-    background: #fff;
-    color: var(--color-texto);
-  }
-  .campo input[type=color] {
-    width: 46px; height: 34px;
-    padding: 2px;
-    border: 1px solid var(--color-borde);
-    border-radius: 8px;
-    vertical-align: middle;
-    cursor: pointer;
-  }
-  .fila-doble { display: flex; gap: 10px; }
-  .fila-doble .campo { flex: 1; }
-  .acciones-modal {
-    display: flex;
-    gap: 8px;
-    margin-top: 18px;
-    flex-wrap: wrap;
-  }
-  .acciones-modal .separador { margin-left: auto; }
+  /* — vista Lista y Resumen — */
+  .vista-plana { flex: 1; padding: 20px 24px 40px; animation: vista-entra .25s ease; }
+  .chip-cat { display: inline-flex; align-items: center; gap: 7px; }
+  .chip-cat .color { width: 10px; height: 10px; flex: none; }
 
-  /* Editor de categorías dentro de Configuración */
-  .cat-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-  .cat-fila {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .cat-fila input[type=text] {
-    flex: 1;
-    padding: 6px 8px;
-    border: 1px solid var(--color-borde);
-    border-radius: 7px;
-    font: inherit;
-  }
+  .estado-vacio { padding: 48px 0; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+  .estado-vacio .titulo { font-family: var(--font-heading); font-weight: 800; font-size: 22px; color: var(--color-text); }
+  .estado-vacio p { margin: 8px 0 16px; font-size: 14px; }
 
-  .aviso {
-    background: #eef3ff;
-    border: 1px solid #d5e0ff;
-    color: #2f4bbd;
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    margin-bottom: 12px;
+  .grid-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; max-width: 1100px; }
+  .fila-cat { display: grid; grid-template-columns: 140px 1fr 56px; align-items: center; gap: 10px; }
+  .fila-cat .nombre-cat { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; overflow: hidden; }
+  .fila-cat .nombre-cat .texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fila-cat .pista-barra { height: 10px; background: color-mix(in srgb, var(--color-text) 8%, transparent); }
+  .fila-cat .barra { height: 10px; transition: width .3s ease; }
+  .fila-cat .horas { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+
+  /* — editor de categorías en Configuración — */
+  .cat-fila { display: flex; gap: 8px; align-items: center; }
+  .cat-fila input[type=color] {
+    width: 36px; height: 32px; padding: 2px; flex: none; cursor: pointer;
+    border: 1px solid var(--color-divider); background: var(--color-surface);
   }
+  .cat-fila .input { min-height: 32px; }
 
   /* =========================================================================
-     VISTA DE IMPRESIÓN
-     Al imprimir (o "Guardar como PDF") se ocultan botones y se limpia el diseño.
+     VISTA DE IMPRESIÓN — al imprimir (Ctrl+P) se ocultan los controles y
+     queda solo el contenido, listo para papel o "Guardar como PDF".
      ========================================================================= */
   @media print {
-    header.barra { position: static; }
-    header.barra button, .dia .cabecera button, .no-imprimir { display: none !important; }
+    header.nav { position: static; }
+    .nav-acciones, .seg, .subbar-dia button, .btn-copiar-mini { display: none !important; }
+    .vista-scroll, .vista-plana { overflow: visible; padding: 8px 0; }
     body { background: #fff; }
-    main { max-width: none; padding: 0; }
-    .semana { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .dia { box-shadow: none; break-inside: avoid; }
-    .bloque { color: #000 !important; }        /* mejor contraste en papel */
-    .pista-vacio { display: none; }
+    .bloque { box-shadow: none; }
   }
 
-  /* Ajustes para móviles muy pequeños */
-  @media (max-width: 420px) {
-    header.barra h1 { font-size: 16px; }
-    header.barra { padding: 10px 12px; }
-    main { padding: 10px; }
+  /* Ajustes para pantallas pequeñas (móvil) */
+  @media (max-width: 480px) {
+    header.nav, .leyenda, .subbar-dia { padding-left: 12px; padding-right: 12px; }
+    .vista-scroll, .vista-plana { padding-left: 12px; padding-right: 12px; }
+    .nav-personas { font-size: 17px; }
   }
 </style>
 </head>
 <body>
 
 <!-- =========================================================================
-     BARRA SUPERIOR con el título y los botones de acción
+     BARRA SUPERIOR: título, selector de vista y acciones
      ========================================================================= -->
-<header class="barra">
-  <h1><span class="emoji">🗓️</span> <span id="titulo-app">Cronograma semanal</span></h1>
-  <button class="primario" onclick="abrirNuevoBloque()">＋ Añadir bloque</button>
-  <button onclick="abrirConfig()">⚙️ Configuración</button>
-  <button onclick="exportarJSON()">⬇️ Exportar</button>
-  <button onclick="document.getElementById('archivo-importar').click()">⬆️ Importar</button>
-  <button onclick="window.print()">🖨️ Imprimir / PDF</button>
-  <!-- Campo de archivo oculto que se activa desde el botón "Importar" -->
+<header class="nav">
+  <div class="nav-titulo">
+    <div class="nav-kicker">Cronograma semanal</div>
+    <div class="nav-personas" id="titulo-personas">…</div>
+  </div>
+
+  <!-- Selector de vista -->
+  <div class="seg" id="selector-vista">
+    <label class="seg-opt"><input type="radio" name="vista" value="semana" checked>Semana</label>
+    <label class="seg-opt"><input type="radio" name="vista" value="dia">Día</label>
+    <label class="seg-opt"><input type="radio" name="vista" value="lista">Lista</label>
+    <label class="seg-opt"><input type="radio" name="vista" value="resumen">Resumen</label>
+  </div>
+
+  <div class="nav-acciones">
+    <button class="btn btn-secondary btn-icon" title="Modo claro / oscuro" onclick="toggleOscuro()">
+      <!-- Icono sol (se muestra en modo oscuro) / luna (en modo claro) -->
+      <svg id="icono-sol" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      <svg id="icono-luna" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+    <button class="btn btn-secondary btn-icon" title="Exportar respaldo (JSON)" onclick="exportarJSON()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+    </button>
+    <button class="btn btn-secondary btn-icon" title="Importar respaldo" onclick="document.getElementById('archivo-importar').click()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+    </button>
+    <button class="btn btn-secondary btn-icon" title="Configuración" onclick="abrirConfig()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+    </button>
+    <button class="btn btn-primary" onclick="abrirNuevo()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      Añadir bloque
+    </button>
+  </div>
   <input type="file" id="archivo-importar" accept="application/json,.json" style="display:none" onchange="importarJSON(event)">
 </header>
 
-<!-- Leyenda de colores por categoría (se genera con JavaScript) -->
+<!-- Leyenda de categorías (solo en vistas de calendario) -->
 <div class="leyenda" id="leyenda"></div>
 
-<!-- Contenedor donde se dibuja la semana completa -->
-<main>
-  <div class="semana" id="semana"></div>
-</main>
+<!-- Subbarra de navegación de la vista Día -->
+<div class="subbar-dia" id="subbar-dia" hidden>
+  <button class="btn btn-secondary btn-icon" title="Día anterior" onclick="cambiarDia(-1)">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+  </button>
+  <span class="nombre" id="nombre-dia-activo"></span>
+  <button class="btn btn-secondary btn-icon" title="Día siguiente" onclick="cambiarDia(1)">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  </button>
+  <button class="btn btn-secondary" style="margin-left:auto" onclick="copiarDiaATodos(estado.diaActivo)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+    Copiar este día a toda la semana
+  </button>
+</div>
+
+<!-- Contenido principal: aquí JavaScript dibuja la vista activa -->
+<div id="contenido"></div>
 
 <!-- =========================================================================
-     MODAL 1: Añadir / editar un bloque de actividad
+     MODAL: añadir / editar bloque
      ========================================================================= -->
-<div class="modal-fondo" id="modal-bloque">
-  <div class="modal">
-    <h2 id="modal-bloque-titulo">Nuevo bloque</h2>
-    <div class="campo">
-      <label for="b-titulo">Título</label>
-      <input type="text" id="b-titulo" placeholder="Ej: Desayuno, Gimnasio, Reunión...">
+<div class="dialog-backdrop" id="modal-bloque" hidden>
+  <div class="dialog">
+    <div class="dialog-title" id="modal-bloque-titulo">Nuevo bloque</div>
+    <div class="field">
+      <label>Título</label>
+      <input class="input" type="text" id="b-titulo" placeholder="Ej: Desayuno, Gimnasio, Reunión…">
     </div>
-    <div class="fila-doble">
-      <div class="campo">
-        <label for="b-persona">Persona</label>
-        <select id="b-persona"></select>
-      </div>
-      <div class="campo">
-        <label for="b-dia">Día</label>
-        <select id="b-dia"></select>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Persona</label><select class="input" id="b-persona"></select></div>
+      <div class="field"><label>Día</label><select class="input" id="b-dia"></select></div>
     </div>
-    <div class="campo">
-      <label for="b-categoria">Categoría</label>
-      <select id="b-categoria"></select>
+    <div class="field"><label>Categoría</label><select class="input" id="b-categoria"></select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Hora de inicio</label><select class="input" id="b-inicio"></select></div>
+      <div class="field"><label>Hora de fin</label><select class="input" id="b-fin"></select></div>
     </div>
-    <div class="fila-doble">
-      <div class="campo">
-        <label for="b-inicio">Hora de inicio</label>
-        <select id="b-inicio"></select>
-      </div>
-      <div class="campo">
-        <label for="b-fin">Hora de fin</label>
-        <select id="b-fin"></select>
-      </div>
-    </div>
-    <div class="acciones-modal">
-      <button class="peligro" id="btn-eliminar-bloque" onclick="eliminarBloqueActual()">🗑️ Eliminar</button>
-      <button id="btn-duplicar-bloque" onclick="duplicarBloqueActual()">⧉ Duplicar</button>
-      <button class="separador" onclick="cerrarModal('modal-bloque')">Cancelar</button>
-      <button class="primario" onclick="guardarBloque()">Guardar</button>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="btn-eliminar" onclick="eliminarBloqueActual()">Eliminar</button>
+      <button class="btn btn-secondary" id="btn-duplicar" onclick="duplicarBloqueActual()">Duplicar</button>
+      <span class="derecha">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarBloque()">Guardar</button>
+      </span>
     </div>
   </div>
 </div>
 
 <!-- =========================================================================
-     MODAL 2: Configuración general (personas, horario, categorías...)
+     MODAL: configuración
      ========================================================================= -->
-<div class="modal-fondo" id="modal-config">
-  <div class="modal">
-    <h2>⚙️ Configuración</h2>
-
-    <div class="fila-doble">
-      <div class="campo">
-        <label for="c-persona1">Nombre persona 1</label>
-        <input type="text" id="c-persona1">
-      </div>
-      <div class="campo">
-        <label for="c-persona2">Nombre persona 2</label>
-        <input type="text" id="c-persona2">
-      </div>
+<div class="dialog-backdrop" id="modal-config" hidden>
+  <div class="dialog" style="width:min(500px,100%);max-height:88vh;overflow-y:auto">
+    <div class="dialog-title">Configuración</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Nombre persona 1</label><input class="input" type="text" id="c-persona1"></div>
+      <div class="field"><label>Nombre persona 2</label><input class="input" type="text" id="c-persona2"></div>
     </div>
-
-    <div class="fila-doble">
-      <div class="campo">
-        <label for="c-inicio">Hora inicial visible</label>
-        <input type="time" id="c-inicio" step="1800">
-      </div>
-      <div class="campo">
-        <label for="c-fin">Hora final visible</label>
-        <input type="time" id="c-fin" step="1800">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="field"><label>Desde</label><input class="input" type="time" step="1800" id="c-inicio"></div>
+      <div class="field"><label>Hasta</label><input class="input" type="time" step="1800" id="c-fin"></div>
+      <div class="field"><label>Precisión</label>
+        <select class="input" id="c-granularidad">
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="60">60 min</option>
+        </select>
       </div>
     </div>
-
-    <div class="campo">
-      <label for="c-granularidad">Granularidad de los bloques</label>
-      <select id="c-granularidad">
-        <option value="30">30 minutos</option>
-        <option value="60">60 minutos</option>
-      </select>
+    <div class="field">
+      <label>Categorías (color y nombre)</label>
+      <div style="display:flex;flex-direction:column;gap:7px" id="cat-lista"></div>
+      <button class="btn btn-secondary" style="margin-top:8px;font-size:12px;padding:5px 10px" onclick="agregarCategoriaFila()">+ Añadir categoría</button>
     </div>
-
-    <div class="campo">
-      <label>Categorías (nombre y color)</label>
-      <div class="cat-lista" id="cat-lista"></div>
-      <button class="pequeno" onclick="agregarCategoriaFila()">＋ Añadir categoría</button>
-    </div>
-
-    <div class="acciones-modal">
-      <button class="peligro" onclick="borrarTodo()">Borrar todos los datos</button>
-      <button class="separador" onclick="cerrarModal('modal-config')">Cancelar</button>
-      <button class="primario" onclick="guardarConfig()">Guardar cambios</button>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" onclick="borrarTodo()">Borrar todos los datos</button>
+      <span class="derecha">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarConfig()">Guardar cambios</button>
+      </span>
     </div>
   </div>
 </div>
 
 <script>
 /* ===========================================================================
-   LÓGICA DE LA APLICACIÓN (JavaScript)
+   LÓGICA DE LA APLICACIÓN
    ===========================================================================
-   Organización del código:
-   1. Configuración por defecto y estado.
-   2. Utilidades de tiempo.
-   3. Guardado/carga en localStorage.
-   4. Dibujado (render) de la semana.
-   5. Detección de tiempo libre compartido.
-   6. Formulario de bloques (añadir/editar/eliminar/duplicar).
-   7. Copiar un día a toda la semana.
-   8. Configuración (personas, horario, categorías).
-   9. Exportar / Importar / Imprimir.
+   Índice:
+    1. Constantes y estado
+    2. Utilidades (tiempo, colores, ids)
+    3. Guardar / cargar / migrar datos
+    4. Render principal (elige la vista)
+    5. Vista calendario (Semana y Día) + tiempo libre compartido
+    6. Arrastrar y redimensionar bloques con el mouse
+    7. Vista Lista
+    8. Vista Resumen
+    9. Modal de bloque (crear, editar, eliminar, duplicar)
+   10. Copiar un día a toda la semana
+   11. Modal de configuración
+   12. Exportar / importar / tema oscuro
    =========================================================================== */
 
-/* --- Nombres de los días (Lunes a Domingo) --- */
-const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-const DIAS_CORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+/* ----- 1. CONSTANTES Y ESTADO ----- */
 
-/* ---------------------------------------------------------------------------
-   1. CONFIGURACIÓN POR DEFECTO
-   >>> PERSONALIZAR <<< Si borran todos los datos, se vuelve a estos valores.
-   (Pero lo normal es cambiarlos desde el botón "Configuración".)
-   --------------------------------------------------------------------------- */
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const CLAVE = "cronograma_v2";              // clave de guardado en localStorage
+const CLAVE_V1 = "cronograma_semanal_v1";   // clave de la versión anterior (se migra)
+
+/* >>> PERSONALIZAR <<<
+   PX_POR_MIN: densidad vertical del calendario (píxeles por minuto).
+   Súbelo para bloques más altos, bájalo para una vista más compacta.
+   LINEA_AHORA: pon false si no quieres la línea roja de la hora actual. */
+const PX_POR_MIN = 0.9;
+const LINEA_AHORA = true;
+
+/* >>> PERSONALIZAR <<< Valores por defecto (se usan la primera vez o al
+   "Borrar todos los datos"; lo normal es cambiarlos desde Configuración). */
 function configPorDefecto() {
   return {
-    personas: ["Ana", "Jeronimo"],   // Los dos nombres (respuesta dada)
-    horaInicio: 330,                  // 5:30 en minutos desde medianoche (5*60+30)
-    horaFin: 1350,                    // 22:30 en minutos (22*60+30)
-    granularidad: 30,                 // Tamaño de los bloques en minutos
-    // Las 8 categorías por defecto, cada una con su color:
+    personas: ["Ana", "Jeronimo"],
+    horaInicio: 360,     // 6:00 en minutos desde medianoche
+    horaFin: 1380,       // 23:00
+    granularidad: 30,    // precisión de los bloques en minutos (15, 30 o 60)
     categorias: [
-      { id: "trabajo",   nombre: "Trabajo",          color: "#4f6ef7" },
-      { id: "ejercicio", nombre: "Ejercicio",        color: "#e5484d" },
-      { id: "comidas",   nombre: "Comidas",          color: "#f5a623" },
-      { id: "sueno",     nombre: "Sueño",            color: "#7b61ff" },
-      { id: "hogar",     nombre: "Tareas del hogar", color: "#8b6f47" },
-      { id: "personal",  nombre: "Tiempo personal",  color: "#2aa5b8" },
-      { id: "pareja",    nombre: "Tiempo en pareja", color: "#e0407b" },
-      { id: "otros",     nombre: "Otros",            color: "#7a8699" },
+      { id: "trabajo",   nombre: "Trabajo",          color: "#444141" },
+      { id: "ejercicio", nombre: "Ejercicio",        color: "#ec3013" },
+      { id: "comidas",   nombre: "Comidas",          color: "#a86518" },
+      { id: "sueno",     nombre: "Sueño",            color: "#5f5c8f" },
+      { id: "hogar",     nombre: "Tareas del hogar", color: "#7c6248" },
+      { id: "personal",  nombre: "Tiempo personal",  color: "#3f7d6c" },
+      { id: "pareja",    nombre: "Tiempo en pareja", color: "#a03e5f" },
+      { id: "otros",     nombre: "Otros",            color: "#7d7979" }
     ]
   };
 }
 
-/* --- Estado en memoria --- */
-let config = configPorDefecto();
-let bloques = [];   // Lista de todos los bloques del cronograma
-let idEnEdicion = null;  // Id del bloque que se está editando (null = nuevo)
+/* Estado en memoria de toda la aplicación */
+const estado = {
+  config: null,
+  bloques: [],
+  oscuro: false,
+  vista: "semana",                          // semana | dia | lista | resumen
+  diaActivo: (new Date().getDay() + 6) % 7, // hoy (0 = Lunes … 6 = Domingo)
+  idEnEdicion: null,                        // id del bloque abierto en el modal
+  draftNuevo: null                          // datos previos al crear un bloque
+};
+let arrastre = null;                        // información del drag en curso
 
-/* Clave con la que se guardan los datos en el navegador */
-const CLAVE_ALMACEN = "cronograma_semanal_v1";
+/* ----- 2. UTILIDADES ----- */
 
-/* ---------------------------------------------------------------------------
-   2. UTILIDADES DE TIEMPO
-   Trabajamos con "minutos desde medianoche" (ej: 8:30 = 510) porque es fácil
-   de sumar y comparar. Estas funciones convierten a/desde texto "HH:MM".
-   --------------------------------------------------------------------------- */
-function minutosATexto(min) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
+function fmt(min) {
+  const h = Math.floor(min / 60), m = min % 60;
   return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
-function textoAMinutos(txt) {
-  const [h, m] = txt.split(":").map(Number);
-  return h * 60 + m;
+function aMinutos(txt) {
+  const p = (txt || "").split(":");
+  return (+p[0] || 0) * 60 + (+p[1] || 0);
 }
-
-/* Genera un identificador único sencillo para cada bloque */
 function nuevoId() {
   return "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
-
-/* ---------------------------------------------------------------------------
-   3. GUARDAR Y CARGAR (localStorage = memoria del navegador)
-   --------------------------------------------------------------------------- */
-function guardar() {
-  // Se guarda automáticamente después de cada cambio.
-  const datos = { config, bloques };
-  localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(datos));
+function categoriaDe(id) {
+  const c = estado.config.categorias;
+  return c.find(x => x.id === id) || c[c.length - 1];
 }
-
-function cargar() {
-  const crudo = localStorage.getItem(CLAVE_ALMACEN);
-  if (!crudo) return;  // Primera vez: se quedan los valores por defecto.
-  try {
-    const datos = JSON.parse(crudo);
-    if (datos.config)  config = datos.config;
-    if (datos.bloques) bloques = datos.bloques;
-  } catch (e) {
-    console.warn("No se pudieron leer los datos guardados:", e);
-  }
+/* Decide si el texto sobre un color de fondo debe ser oscuro o claro */
+function textoSobre(hex) {
+  const n = parseInt((hex || "#777777").slice(1), 16);
+  const luz = 0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255);
+  return luz > 155 ? "#201e1d" : "#ffffff";
 }
-
-/* ---------------------------------------------------------------------------
-   4. DIBUJAR LA SEMANA COMPLETA
-   Reconstruye toda la pantalla a partir del estado (config + bloques).
-   Se llama cada vez que algo cambia.
-   --------------------------------------------------------------------------- */
-function render() {
-  document.getElementById("titulo-app").textContent =
-    "Cronograma de " + config.personas[0] + " y " + config.personas[1];
-
-  renderLeyenda();
-
-  const totalMin = config.horaFin - config.horaInicio;           // minutos visibles
-  const pxPorMin = parseFloat(getComputedStyle(document.documentElement)
-                    .getPropertyValue("--px-por-minuto")) || 0.62;
-  const alturaCuerpo = totalMin * pxPorMin;                      // alto de cada carril
-
-  const cont = document.getElementById("semana");
-  cont.innerHTML = "";
-
-  // Una tarjeta por cada día de la semana
-  for (let d = 0; d < 7; d++) {
-    const dia = document.createElement("div");
-    dia.className = "dia";
-
-    // --- Cabecera del día con botones de atajo ---
-    const cab = document.createElement("div");
-    cab.className = "cabecera";
-    cab.innerHTML = `
-      <span class="nombre-dia">${DIAS[d]}</span>
-      <button title="Copiar este día a toda la semana" onclick="copiarDiaATodos(${d})">📋 a semana</button>
-    `;
-    dia.appendChild(cab);
-
-    // --- Sub-cabecera con los nombres de las dos personas ---
-    const pc = document.createElement("div");
-    pc.className = "personas-cab";
-    pc.innerHTML = `<span></span><span title="${config.personas[0]}">${config.personas[0]}</span><span title="${config.personas[1]}">${config.personas[1]}</span>`;
-    dia.appendChild(pc);
-
-    // --- Cuerpo: gutter de horas + dos carriles ---
-    const cuerpo = document.createElement("div");
-    cuerpo.className = "cuerpo";
-    cuerpo.style.height = alturaCuerpo + "px";
-
-    // Gutter (columna de horas a la izquierda)
-    const gutter = document.createElement("div");
-    gutter.className = "gutter";
-    // Etiquetas de cada hora en punto dentro del rango visible
-    const primeraHora = Math.ceil(config.horaInicio / 60);
-    const ultimaHora = Math.floor(config.horaFin / 60);
-    for (let h = primeraHora; h <= ultimaHora; h++) {
-      const y = (h * 60 - config.horaInicio) * pxPorMin;
-      const marca = document.createElement("div");
-      marca.className = "marca-hora";
-      marca.style.top = y + "px";
-      marca.textContent = String(h).padStart(2, "0") + ":00";
-      gutter.appendChild(marca);
-    }
-    cuerpo.appendChild(gutter);
-
-    // Dos carriles (uno por persona)
-    const carriles = [];
-    for (let p = 0; p < 2; p++) {
-      const carril = document.createElement("div");
-      carril.className = "carril";
-      carril.dataset.dia = d;
-      carril.dataset.persona = p;
-
-      // Líneas de fondo por cada hora (y media hora si la granularidad es 30)
-      for (let h = primeraHora; h <= ultimaHora; h++) {
-        const y = (h * 60 - config.horaInicio) * pxPorMin;
-        const linea = document.createElement("div");
-        linea.className = "linea-hora";
-        linea.style.top = y + "px";
-        carril.appendChild(linea);
-        if (config.granularidad === 30 && (h * 60 + 30) < config.horaFin) {
-          const media = document.createElement("div");
-          media.className = "linea-media";
-          media.style.top = (y + 30 * pxPorMin) + "px";
-          carril.appendChild(media);
-        }
-      }
-
-      // Al hacer clic en una zona vacía del carril, se crea un bloque nuevo
-      // con ese día, esa persona y la hora aproximada donde se hizo clic.
-      carril.addEventListener("click", (ev) => {
-        if (ev.target !== carril) return; // ignorar clics sobre bloques ya existentes
-        const rect = carril.getBoundingClientRect();
-        const minRelativo = (ev.clientY - rect.top) / pxPorMin;
-        let inicio = config.horaInicio + Math.round(minRelativo / config.granularidad) * config.granularidad;
-        inicio = Math.max(config.horaInicio, Math.min(inicio, config.horaFin - config.granularidad));
-        abrirNuevoBloque({ dia: d, persona: p, inicio: inicio, fin: inicio + config.granularidad });
-      });
-
-      carriles.push(carril);
-      cuerpo.appendChild(carril);
-    }
-
-    // Pista visual si el día no tiene bloques
-    if (!bloques.some(b => b.dia === d)) {
-      const pista = document.createElement("div");
-      pista.className = "pista-vacio";
-      pista.textContent = "Toca aquí para añadir";
-      cuerpo.appendChild(pista);
-    }
-
-    // --- Dibujar las bandas de TIEMPO LIBRE COMPARTIDO (detrás de los bloques) ---
-    const bandas = calcularLibreCompartido(d);
-    bandas.forEach(([ini, fin]) => {
-      const banda = document.createElement("div");
-      banda.className = "banda-libre";
-      banda.style.top = (ini - config.horaInicio) * pxPorMin + "px";
-      banda.style.height = (fin - ini) * pxPorMin + "px";
-      // Solo mostramos el texto si la banda es suficientemente alta
-      if ((fin - ini) * pxPorMin > 22) {
-        banda.innerHTML = `<span class="txt">Libres juntos</span>`;
-      }
-      // La banda abarca los dos carriles: la insertamos en cada uno.
-      const b2 = banda.cloneNode(true);
-      carriles[0].appendChild(banda);
-      carriles[1].appendChild(b2);
-    });
-
-    // --- Dibujar los bloques de cada persona ---
-    bloques.filter(b => b.dia === d).forEach(b => {
-      const carril = carriles[b.persona];
-      if (!carril) return;
-      const cat = categoriaPorId(b.categoriaId);
-      const el = document.createElement("div");
-      el.className = "bloque";
-      el.style.top = (b.inicio - config.horaInicio) * pxPorMin + "px";
-      el.style.height = Math.max(14, (b.fin - b.inicio) * pxPorMin - 2) + "px";
-      el.style.background = cat ? cat.color : "#7a8699";
-      el.innerHTML = `
-        <div class="b-titulo">${escapar(b.titulo || "(sin título)")}</div>
-        <div class="b-hora">${minutosATexto(b.inicio)}–${minutosATexto(b.fin)}</div>
-      `;
-      el.addEventListener("click", (ev) => { ev.stopPropagation(); editarBloque(b.id); });
-      carril.appendChild(el);
-    });
-
-    dia.appendChild(cuerpo);   // Adjuntamos el cuerpo (gutter + carriles) a la tarjeta del día
-    cont.appendChild(dia);
-  }
+/* "450" minutos -> "7,5 h" */
+function fmtHoras(min) {
+  const txt = (Math.round(min / 60 * 10) / 10).toFixed(1).replace(".", ",").replace(",0", "");
+  return txt + " h";
 }
-
-/* Dibuja la leyenda de colores + el indicador de tiempo libre compartido */
-function renderLeyenda() {
-  const ley = document.getElementById("leyenda");
-  ley.innerHTML = "";
-  config.categorias.forEach(cat => {
-    const item = document.createElement("span");
-    item.className = "item";
-    item.innerHTML = `<span class="punto" style="background:${cat.color}"></span>${escapar(cat.nombre)}`;
-    ley.appendChild(item);
-  });
-  const libre = document.createElement("span");
-  libre.className = "item libre";
-  libre.innerHTML = `<span class="punto"></span>Tiempo libre compartido`;
-  ley.appendChild(libre);
-}
-
-/* Evita que un título con caracteres < > & rompa el HTML */
 function escapar(txt) {
   return String(txt).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
 }
 
-function categoriaPorId(id) {
-  return config.categorias.find(c => c.id === id) || config.categorias[config.categorias.length - 1];
+/* ----- 3. GUARDAR / CARGAR / MIGRAR ----- */
+
+function guardar() {
+  localStorage.setItem(CLAVE, JSON.stringify({
+    config: estado.config, bloques: estado.bloques, dark: estado.oscuro
+  }));
 }
 
-/* ---------------------------------------------------------------------------
-   5. DETECCIÓN DE TIEMPO LIBRE COMPARTIDO
-   Recorremos el día en pasos de "granularidad". En cada paso miramos si las
-   DOS personas están libres (sin ningún bloque). Los tramos libres seguidos
-   se unen en bandas continuas para resaltarlos.
-   --------------------------------------------------------------------------- */
-function calcularLibreCompartido(dia) {
-  const paso = config.granularidad;
-  const bandas = [];
-  let inicioBanda = null;
+function cargar() {
+  try {
+    // Datos de esta versión
+    const v2 = localStorage.getItem(CLAVE);
+    if (v2) {
+      const d = JSON.parse(v2);
+      if (d.config && Array.isArray(d.bloques)) {
+        estado.config = d.config; estado.bloques = d.bloques; estado.oscuro = !!d.dark;
+        return;
+      }
+    }
+    // Migración desde la versión anterior (se conservan config y bloques)
+    const v1 = localStorage.getItem(CLAVE_V1);
+    if (v1) {
+      const d = JSON.parse(v1);
+      if (d.config && Array.isArray(d.bloques)) {
+        estado.config = d.config; estado.bloques = d.bloques;
+        return;
+      }
+    }
+  } catch (e) { /* datos corruptos: seguimos con los valores por defecto */ }
 
-  for (let t = config.horaInicio; t < config.horaFin; t += paso) {
-    const ambosLibres = !personaOcupada(dia, 0, t, t + paso)
-                     && !personaOcupada(dia, 1, t, t + paso);
-    if (ambosLibres && inicioBanda === null) {
-      inicioBanda = t;                 // empieza un tramo libre
-    } else if (!ambosLibres && inicioBanda !== null) {
-      bandas.push([inicioBanda, t]);   // se cierra el tramo libre
-      inicioBanda = null;
+  // Primera vez: configuración por defecto + unos bloques de ejemplo
+  estado.config = configPorDefecto();
+  estado.bloques = [
+    { id: nuevoId(), titulo: "Trabajo",     persona: 0, dia: 0, categoriaId: "trabajo",   inicio: 540,  fin: 1020 },
+    { id: nuevoId(), titulo: "Trabajo",     persona: 1, dia: 0, categoriaId: "trabajo",   inicio: 510,  fin: 990 },
+    { id: nuevoId(), titulo: "Almuerzo",    persona: 0, dia: 0, categoriaId: "comidas",   inicio: 780,  fin: 840 },
+    { id: nuevoId(), titulo: "Gimnasio",    persona: 1, dia: 1, categoriaId: "ejercicio", inicio: 420,  fin: 480 },
+    { id: nuevoId(), titulo: "Cena juntos", persona: 0, dia: 1, categoriaId: "pareja",    inicio: 1230, fin: 1320 },
+    { id: nuevoId(), titulo: "Cena juntos", persona: 1, dia: 1, categoriaId: "pareja",    inicio: 1230, fin: 1320 }
+  ];
+}
+
+/* ----- 4. RENDER PRINCIPAL ----- */
+
+function render() {
+  const cfg = estado.config;
+  document.getElementById("titulo-personas").textContent = cfg.personas[0] + " & " + cfg.personas[1];
+
+  // Marcar la vista activa en el selector
+  document.querySelector(`#selector-vista input[value="${estado.vista}"]`).checked = true;
+
+  // La leyenda solo se muestra en las vistas de calendario
+  const esCalendario = estado.vista === "semana" || estado.vista === "dia";
+  document.getElementById("leyenda").style.display = esCalendario ? "" : "none";
+  if (esCalendario) renderLeyenda();
+
+  // Subbarra de la vista Día
+  const subbar = document.getElementById("subbar-dia");
+  subbar.hidden = estado.vista !== "dia";
+  if (estado.vista === "dia") {
+    document.getElementById("nombre-dia-activo").textContent = DIAS[estado.diaActivo];
+  }
+
+  const cont = document.getElementById("contenido");
+  cont.innerHTML = "";
+  if (esCalendario) cont.appendChild(renderCalendario());
+  else if (estado.vista === "lista") cont.appendChild(renderLista());
+  else cont.appendChild(renderResumen());
+}
+
+function renderLeyenda() {
+  const ley = document.getElementById("leyenda");
+  ley.innerHTML = "";
+  estado.config.categorias.forEach(cat => {
+    const item = document.createElement("span");
+    item.className = "leyenda-item";
+    item.innerHTML = `<span class="leyenda-chip" style="background:${cat.color}"></span>${escapar(cat.nombre)}`;
+    ley.appendChild(item);
+  });
+  // Indicador del resaltado de tiempo libre compartido
+  const libre = document.createElement("span");
+  libre.className = "leyenda-item libre";
+  libre.innerHTML = `<span class="leyenda-chip"></span>Tiempo libre compartido`;
+  ley.appendChild(libre);
+}
+
+/* ----- 5. VISTA CALENDARIO (Semana y Día) ----- */
+
+function renderCalendario() {
+  const cfg = estado.config;
+  const hIni = cfg.horaInicio, hFin = cfg.horaFin;
+  const alto = (hFin - hIni) * PX_POR_MIN;
+  const hoy = (new Date().getDay() + 6) % 7;
+  const ahora = new Date();
+  const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+
+  // En vista Semana se muestran los 7 días; en vista Día, solo el activo
+  const idxs = estado.vista === "dia" ? [estado.diaActivo] : [0, 1, 2, 3, 4, 5, 6];
+
+  const scroll = document.createElement("div");
+  scroll.className = "vista-scroll";
+  const interior = document.createElement("div");
+  interior.style.minWidth = estado.vista === "semana" ? "1060px" : "560px";
+  scroll.appendChild(interior);
+
+  const colGrid = "52px repeat(" + idxs.length + ", 1fr)";
+
+  // --- Cabeceras de día ---
+  const cab = document.createElement("div");
+  cab.style.display = "grid";
+  cab.style.gridTemplateColumns = colGrid;
+  cab.appendChild(document.createElement("div")); // celda vacía sobre el gutter
+  idxs.forEach(d => {
+    const celda = document.createElement("div");
+    celda.className = "cab-dia";
+    const btnCopiar = estado.vista === "semana"
+      ? `<button class="btn btn-ghost btn-icon btn-copiar-mini" title="Copiar este día a toda la semana" onclick="copiarDiaATodos(${d})">
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+         </button>`
+      : "";
+    celda.innerHTML = `
+      <div class="fila">
+        <span class="nombre">${DIAS[d]}</span>
+        ${d === hoy ? '<span class="tag">HOY</span>' : ""}
+        ${btnCopiar}
+      </div>
+      <div class="personas">
+        <span title="${escapar(cfg.personas[0])}">${escapar(cfg.personas[0])}</span>
+        <span title="${escapar(cfg.personas[1])}">${escapar(cfg.personas[1])}</span>
+      </div>`;
+    cab.appendChild(celda);
+  });
+  interior.appendChild(cab);
+
+  const divisor = document.createElement("div");
+  divisor.className = "divisor-2";
+  interior.appendChild(divisor);
+
+  // --- Cuerpo: gutter + columnas de día ---
+  const cuerpo = document.createElement("div");
+  cuerpo.style.display = "grid";
+  cuerpo.style.gridTemplateColumns = colGrid;
+  cuerpo.style.userSelect = "none";
+
+  // Gutter con las marcas de hora
+  const gutter = document.createElement("div");
+  gutter.className = "gutter";
+  gutter.style.height = alto + "px";
+  for (let t = Math.ceil(hIni / 60) * 60; t <= hFin; t += 60) {
+    const y = (t - hIni) * PX_POR_MIN;
+    if (y > 8 && y < alto - 6) {
+      const marca = document.createElement("div");
+      marca.className = "marca-hora";
+      marca.style.top = (y - 7) + "px";
+      marca.textContent = fmt(t);
+      gutter.appendChild(marca);
     }
   }
-  if (inicioBanda !== null) bandas.push([inicioBanda, config.horaFin]);
-  return bandas;
+  cuerpo.appendChild(gutter);
+
+  // Una columna por día
+  idxs.forEach(d => {
+    const col = document.createElement("div");
+    col.className = "col-dia";
+    col.style.height = alto + "px";
+
+    // Líneas de fondo (cada hora, y media hora punteada si la precisión < 60)
+    for (let t = Math.ceil(hIni / 60) * 60; t <= hFin; t += 60) {
+      const y = (t - hIni) * PX_POR_MIN;
+      const linea = document.createElement("div");
+      linea.className = "linea-hora";
+      linea.style.top = y + "px";
+      col.appendChild(linea);
+      if (cfg.granularidad < 60 && t + 30 < hFin) {
+        const media = document.createElement("div");
+        media.className = "linea-media";
+        media.style.top = (y + 30 * PX_POR_MIN) + "px";
+        col.appendChild(media);
+      }
+    }
+
+    // Bandas de TIEMPO LIBRE COMPARTIDO (ambas personas sin bloques)
+    calcularLibreCompartido(d).forEach(([ini, fin]) => {
+      const banda = document.createElement("div");
+      banda.className = "banda-libre";
+      banda.style.top = (ini - hIni) * PX_POR_MIN + "px";
+      banda.style.height = (fin - ini) * PX_POR_MIN + "px";
+      if ((fin - ini) * PX_POR_MIN > 22) banda.innerHTML = `<span class="txt">Libres juntos</span>`;
+      col.appendChild(banda);
+    });
+
+    // Dos carriles (uno por persona) con sus bloques
+    const carriles = document.createElement("div");
+    carriles.className = "carriles";
+    for (let p = 0; p < 2; p++) {
+      const carril = document.createElement("div");
+      carril.className = "carril" + (p === 1 ? " p2" : "");
+      carril.dataset.dia = d;
+      carril.dataset.persona = p;
+      carril.addEventListener("click", onCarrilClick);
+
+      estado.bloques.filter(b => b.dia === d && b.persona === p).forEach(b => {
+        const cat = categoriaDe(b.categoriaId);
+        const el = document.createElement("div");
+        el.className = "bloque" + (arrastre && arrastre.id === b.id ? " arrastrando" : "");
+        el.dataset.id = b.id;
+        el.style.top = (b.inicio - hIni) * PX_POR_MIN + "px";
+        el.style.height = Math.max(15, (b.fin - b.inicio) * PX_POR_MIN - 2) + "px";
+        el.style.background = cat.color;
+        el.style.color = textoSobre(cat.color);
+        el.innerHTML = `
+          <div class="b-titulo">${escapar(b.titulo || "Sin título")}</div>
+          <div class="b-hora">${fmt(b.inicio)}–${fmt(b.fin)}</div>
+          <div class="b-resize" data-resize="1"></div>`;
+        el.addEventListener("mousedown", onBloqueDown);
+        carril.appendChild(el);
+      });
+      carriles.appendChild(carril);
+    }
+    col.appendChild(carriles);
+
+    // Línea de "ahora" sobre el día de hoy
+    if (LINEA_AHORA && d === hoy && ahoraMin > hIni && ahoraMin < hFin) {
+      const linea = document.createElement("div");
+      linea.className = "linea-ahora";
+      linea.style.top = (ahoraMin - hIni) * PX_POR_MIN + "px";
+      col.appendChild(linea);
+    }
+
+    cuerpo.appendChild(col);
+  });
+
+  interior.appendChild(cuerpo);
+  return scroll;
 }
 
-/* ¿La persona tiene algún bloque que se solape con el intervalo [ini, fin)? */
+/* Tramos [inicio, fin] en los que las DOS personas están libres ese día */
+function calcularLibreCompartido(dia) {
+  const cfg = estado.config, paso = cfg.granularidad;
+  const bandas = [];
+  let inicioBanda = null;
+  for (let t = cfg.horaInicio; t < cfg.horaFin; t += paso) {
+    const libres = !personaOcupada(dia, 0, t, t + paso) && !personaOcupada(dia, 1, t, t + paso);
+    if (libres && inicioBanda === null) inicioBanda = t;
+    else if (!libres && inicioBanda !== null) { bandas.push([inicioBanda, t]); inicioBanda = null; }
+  }
+  if (inicioBanda !== null) bandas.push([inicioBanda, cfg.horaFin]);
+  return bandas;
+}
 function personaOcupada(dia, persona, ini, fin) {
-  return bloques.some(b =>
-    b.dia === dia && b.persona === persona &&
-    b.inicio < fin && b.fin > ini   // condición de solapamiento
+  return estado.bloques.some(b =>
+    b.dia === dia && b.persona === persona && b.inicio < fin && b.fin > ini
   );
 }
 
-/* ---------------------------------------------------------------------------
-   6. FORMULARIO DE BLOQUES: añadir, editar, guardar, eliminar, duplicar
-   --------------------------------------------------------------------------- */
-
-/* Rellena los desplegables de hora inicio/fin según el rango y la granularidad */
-function llenarSelectsHora() {
-  const selIni = document.getElementById("b-inicio");
-  const selFin = document.getElementById("b-fin");
-  selIni.innerHTML = "";
-  selFin.innerHTML = "";
-  for (let t = config.horaInicio; t <= config.horaFin; t += config.granularidad) {
-    if (t < config.horaFin) selIni.add(new Option(minutosATexto(t), t));
-    if (t > config.horaInicio) selFin.add(new Option(minutosATexto(t), t));
-  }
+/* Clic en zona vacía de un carril: crear un bloque ahí mismo */
+function onCarrilClick(ev) {
+  if (ev.target !== ev.currentTarget) return; // ignorar clics sobre bloques
+  const el = ev.currentTarget;
+  const cfg = estado.config, g = cfg.granularidad;
+  const rect = el.getBoundingClientRect();
+  let min = cfg.horaInicio + Math.round(((ev.clientY - rect.top) / PX_POR_MIN) / g) * g;
+  min = Math.max(cfg.horaInicio, Math.min(min, cfg.horaFin - g));
+  abrirNuevo({
+    persona: +el.dataset.persona, dia: +el.dataset.dia,
+    inicio: min, fin: Math.min(min + 60, cfg.horaFin)
+  });
 }
 
-/* Rellena los desplegables de persona, día y categoría */
+/* ----- 6. ARRASTRAR Y REDIMENSIONAR BLOQUES ----- */
+
+function onBloqueDown(ev) {
+  if (ev.button !== 0) return; // solo botón izquierdo
+  ev.preventDefault();
+  ev.stopPropagation();
+  const el = ev.currentTarget;
+  const b = estado.bloques.find(x => x.id === el.dataset.id);
+  if (!b) return;
+  const carril = el.closest("[data-dia]");
+  const rect = carril.getBoundingClientRect();
+  const minAtY = estado.config.horaInicio + (ev.clientY - rect.top) / PX_POR_MIN;
+  arrastre = {
+    id: b.id,
+    // "resize" si se agarró el borde inferior; "move" en el resto del bloque
+    modo: ev.target.dataset.resize ? "resize" : "move",
+    agarre: minAtY - b.inicio,   // distancia del punto de agarre al inicio
+    dur: b.fin - b.inicio,
+    seMovio: false,
+    x0: ev.clientX, y0: ev.clientY
+  };
+  window.addEventListener("mousemove", onArrastreMove);
+  window.addEventListener("mouseup", onArrastreUp);
+}
+
+function onArrastreMove(ev) {
+  const d = arrastre;
+  if (!d) return;
+  // Umbral de 5px: distingue un clic (abrir editor) de un arrastre real
+  if (!d.seMovio && Math.abs(ev.clientX - d.x0) + Math.abs(ev.clientY - d.y0) < 5) return;
+  d.seMovio = true;
+
+  const carril = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("[data-dia]");
+  if (!carril) return;
+  const cfg = estado.config, g = cfg.granularidad;
+  const rect = carril.getBoundingClientRect();
+  const minAtY = cfg.horaInicio + (ev.clientY - rect.top) / PX_POR_MIN;
+  const snap = v => Math.round(v / g) * g;   // ajustar a la precisión elegida
+
+  const b = estado.bloques.find(x => x.id === d.id);
+  if (!b) return;
+  if (d.modo === "resize") {
+    // Estirar el final del bloque (mínimo un paso de precisión)
+    b.fin = Math.min(cfg.horaFin, Math.max(b.inicio + g, snap(minAtY)));
+  } else {
+    // Mover el bloque completo; puede cambiar de día y de persona
+    let inicio = snap(minAtY - d.agarre);
+    inicio = Math.max(cfg.horaInicio, Math.min(inicio, cfg.horaFin - d.dur));
+    b.inicio = inicio;
+    b.fin = inicio + d.dur;
+    b.dia = +carril.dataset.dia;
+    b.persona = +carril.dataset.persona;
+  }
+  render();
+}
+
+function onArrastreUp() {
+  const d = arrastre;
+  window.removeEventListener("mousemove", onArrastreMove);
+  window.removeEventListener("mouseup", onArrastreUp);
+  arrastre = null;
+  if (!d) return;
+  if (d.seMovio) { guardar(); render(); } // fin del arrastre: guardar
+  else editarBloque(d.id);                // fue un clic: abrir el editor
+}
+
+/* ----- 7. VISTA LISTA ----- */
+
+function renderLista() {
+  const div = document.createElement("div");
+  div.className = "vista-plana";
+  div.style.maxWidth = "980px";
+
+  if (estado.bloques.length === 0) {
+    div.appendChild(estadoVacio("Sin bloques todavía", "Añadí el primer bloque de la semana para verlo acá."));
+    return div;
+  }
+
+  const orden = [...estado.bloques].sort((a, b) => a.dia - b.dia || a.inicio - b.inicio || a.persona - b.persona);
+  const tabla = document.createElement("table");
+  tabla.className = "table";
+  tabla.innerHTML = `
+    <thead><tr>
+      <th style="width:110px">Día</th><th style="width:130px">Horario</th><th>Actividad</th>
+      <th style="width:180px">Categoría</th><th style="width:130px">Persona</th><th style="width:36px"></th>
+    </tr></thead>`;
+  const cuerpo = document.createElement("tbody");
+  let diaPrevio = null;
+  orden.forEach(b => {
+    const cat = categoriaDe(b.categoriaId);
+    const fila = document.createElement("tr");
+    fila.style.cursor = "pointer";
+    fila.innerHTML = `
+      <td style="font-weight:600">${b.dia !== diaPrevio ? DIAS[b.dia] : ""}</td>
+      <td style="font-variant-numeric:tabular-nums">${fmt(b.inicio)} – ${fmt(b.fin)}</td>
+      <td style="font-weight:600">${escapar(b.titulo || "Sin título")}</td>
+      <td><span class="chip-cat"><span class="color" style="background:${cat.color}"></span>${escapar(cat.nombre)}</span></td>
+      <td>${escapar(estado.config.personas[b.persona] || "—")}</td>
+      <td style="text-align:right;color:color-mix(in srgb, var(--color-text) 40%, transparent)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      </td>`;
+    fila.addEventListener("click", () => editarBloque(b.id));
+    diaPrevio = b.dia;
+    cuerpo.appendChild(fila);
+  });
+  tabla.appendChild(cuerpo);
+  div.appendChild(tabla);
+  return div;
+}
+
+/* Mensaje con botón para cuando una vista no tiene datos */
+function estadoVacio(titulo, texto) {
+  const div = document.createElement("div");
+  div.className = "estado-vacio";
+  div.innerHTML = `<div class="titulo">${titulo}</div><p>${texto}</p>`;
+  const btn = document.createElement("button");
+  btn.className = "btn btn-primary";
+  btn.textContent = "Añadir bloque";
+  btn.addEventListener("click", () => abrirNuevo());
+  div.appendChild(btn);
+  return div;
+}
+
+/* ----- 8. VISTA RESUMEN (horas por categoría de cada persona) ----- */
+
+function renderResumen() {
+  const div = document.createElement("div");
+  div.className = "vista-plana";
+
+  if (estado.bloques.length === 0) {
+    div.appendChild(estadoVacio("Sin datos para resumir", "Cuando carguen bloques, acá van a ver las horas por categoría de cada uno."));
+    return div;
+  }
+
+  const cfg = estado.config;
+  // Total de minutos por categoría, por persona
+  let maxMin = 0;
+  const porPersona = [0, 1].map(p => {
+    const tot = {};
+    estado.bloques.filter(b => b.persona === p).forEach(b => {
+      tot[b.categoriaId] = (tot[b.categoriaId] || 0) + (b.fin - b.inicio);
+    });
+    Object.values(tot).forEach(v => { if (v > maxMin) maxMin = v; });
+    return tot;
+  });
+
+  const grid = document.createElement("div");
+  grid.className = "grid-resumen";
+  [0, 1].forEach(p => {
+    const tot = porPersona[p];
+    const total = Object.values(tot).reduce((a, v) => a + v, 0);
+    const card = document.createElement("div");
+    card.className = "card";
+    const filas = cfg.categorias.filter(c => tot[c.id]).map(c => `
+      <div class="fila-cat">
+        <span class="nombre-cat"><span class="leyenda-chip" style="background:${c.color}"></span><span class="texto">${escapar(c.nombre)}</span></span>
+        <div class="pista-barra"><div class="barra" style="background:${c.color};width:${Math.max(2, Math.round(tot[c.id] / (maxMin || 1) * 100))}%"></div></div>
+        <span class="horas">${fmtHoras(tot[c.id])}</span>
+      </div>`).join("");
+    card.innerHTML = `
+      <div>
+        <div class="card-kicker">Persona ${p + 1}</div>
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span style="font-family:var(--font-heading);font-weight:800;font-size:26px">${escapar(cfg.personas[p])}</span>
+          <span style="font-size:13px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">${fmtHoras(total)} planificadas</span>
+        </div>
+      </div>
+      <div class="divisor-2"></div>
+      <div style="display:flex;flex-direction:column;gap:10px">${filas}</div>`;
+    grid.appendChild(card);
+  });
+  div.appendChild(grid);
+  return div;
+}
+
+/* ----- 9. MODAL DE BLOQUE ----- */
+
 function llenarSelectsBloque() {
+  const cfg = estado.config;
   const selP = document.getElementById("b-persona");
   const selD = document.getElementById("b-dia");
   const selC = document.getElementById("b-categoria");
-  selP.innerHTML = ""; selD.innerHTML = ""; selC.innerHTML = "";
-  config.personas.forEach((n, i) => selP.add(new Option(n, i)));
+  const selI = document.getElementById("b-inicio");
+  const selF = document.getElementById("b-fin");
+  selP.innerHTML = ""; selD.innerHTML = ""; selC.innerHTML = ""; selI.innerHTML = ""; selF.innerHTML = "";
+  cfg.personas.forEach((n, i) => selP.add(new Option(n, i)));
   DIAS.forEach((n, i) => selD.add(new Option(n, i)));
-  config.categorias.forEach(c => selC.add(new Option(c.nombre, c.id)));
-  llenarSelectsHora();
+  cfg.categorias.forEach(c => selC.add(new Option(c.nombre, c.id)));
+  for (let t = cfg.horaInicio; t <= cfg.horaFin; t += cfg.granularidad) {
+    if (t < cfg.horaFin) selI.add(new Option(fmt(t), t));
+    if (t > cfg.horaInicio) selF.add(new Option(fmt(t), t));
+  }
 }
 
-/* Abre el formulario para un bloque NUEVO. Puede recibir valores iniciales
-   (por ejemplo cuando se hace clic en un carril). */
-function abrirNuevoBloque(pre = {}) {
-  idEnEdicion = null;
+/* Abrir el modal para un bloque nuevo (con datos previos opcionales) */
+function abrirNuevo(pre = {}) {
+  const cfg = estado.config;
+  estado.idEnEdicion = null;
   llenarSelectsBloque();
+  const hoy = (new Date().getDay() + 6) % 7;
+  const ini = pre.inicio ?? Math.max(cfg.horaInicio, Math.min(540, cfg.horaFin - 60));
   document.getElementById("modal-bloque-titulo").textContent = "Nuevo bloque";
   document.getElementById("b-titulo").value = "";
   document.getElementById("b-persona").value = pre.persona ?? 0;
-  document.getElementById("b-dia").value = pre.dia ?? 0;
-  document.getElementById("b-categoria").value = config.categorias[0].id;
-  document.getElementById("b-inicio").value = pre.inicio ?? config.horaInicio;
-  document.getElementById("b-fin").value = pre.fin ?? (config.horaInicio + config.granularidad);
-  // En un bloque nuevo no tiene sentido "Eliminar" ni "Duplicar"
-  document.getElementById("btn-eliminar-bloque").style.display = "none";
-  document.getElementById("btn-duplicar-bloque").style.display = "none";
-  abrirModal("modal-bloque");
+  document.getElementById("b-dia").value = pre.dia ?? (estado.vista === "dia" ? estado.diaActivo : hoy);
+  document.getElementById("b-categoria").value = cfg.categorias[0].id;
+  document.getElementById("b-inicio").value = ini;
+  document.getElementById("b-fin").value = pre.fin ?? Math.min(ini + 60, cfg.horaFin);
+  document.getElementById("btn-eliminar").style.display = "none";
+  document.getElementById("btn-duplicar").style.display = "none";
+  document.getElementById("modal-bloque").hidden = false;
   document.getElementById("b-titulo").focus();
 }
 
-/* Abre el formulario para EDITAR un bloque existente */
 function editarBloque(id) {
-  const b = bloques.find(x => x.id === id);
+  const b = estado.bloques.find(x => x.id === id);
   if (!b) return;
-  idEnEdicion = id;
+  estado.idEnEdicion = id;
   llenarSelectsBloque();
   document.getElementById("modal-bloque-titulo").textContent = "Editar bloque";
   document.getElementById("b-titulo").value = b.titulo;
@@ -848,235 +1064,215 @@ function editarBloque(id) {
   document.getElementById("b-categoria").value = b.categoriaId;
   document.getElementById("b-inicio").value = b.inicio;
   document.getElementById("b-fin").value = b.fin;
-  document.getElementById("btn-eliminar-bloque").style.display = "";
-  document.getElementById("btn-duplicar-bloque").style.display = "";
-  abrirModal("modal-bloque");
+  document.getElementById("btn-eliminar").style.display = "";
+  document.getElementById("btn-duplicar").style.display = "";
+  document.getElementById("modal-bloque").hidden = false;
 }
 
-/* Guarda el bloque (nuevo o editado) tras validar las horas */
 function guardarBloque() {
   const inicio = parseInt(document.getElementById("b-inicio").value, 10);
   const fin = parseInt(document.getElementById("b-fin").value, 10);
-  if (fin <= inicio) {
-    alert("La hora de fin debe ser posterior a la de inicio.");
-    return;
-  }
+  if (fin <= inicio) { alert("La hora de fin debe ser posterior a la de inicio."); return; }
   const datos = {
-    titulo: document.getElementById("b-titulo").value.trim(),
+    titulo: document.getElementById("b-titulo").value.trim() || "Sin título",
     persona: parseInt(document.getElementById("b-persona").value, 10),
     dia: parseInt(document.getElementById("b-dia").value, 10),
     categoriaId: document.getElementById("b-categoria").value,
     inicio, fin
   };
-  if (idEnEdicion) {
-    // Editar: reemplazamos los datos del bloque existente
-    const b = bloques.find(x => x.id === idEnEdicion);
-    Object.assign(b, datos);
+  if (estado.idEnEdicion) {
+    Object.assign(estado.bloques.find(x => x.id === estado.idEnEdicion), datos);
   } else {
-    // Nuevo: lo añadimos a la lista
-    bloques.push({ id: nuevoId(), ...datos });
+    estado.bloques.push({ id: nuevoId(), ...datos });
   }
   guardar();
-  cerrarModal("modal-bloque");
+  cerrarModales();
   render();
 }
 
-/* Elimina el bloque que se está editando */
 function eliminarBloqueActual() {
-  if (!idEnEdicion) return;
+  if (!estado.idEnEdicion) return;
   if (!confirm("¿Eliminar este bloque?")) return;
-  bloques = bloques.filter(b => b.id !== idEnEdicion);
+  estado.bloques = estado.bloques.filter(b => b.id !== estado.idEnEdicion);
   guardar();
-  cerrarModal("modal-bloque");
+  cerrarModales();
   render();
 }
 
-/* Duplica el bloque actual (crea una copia idéntica que luego se puede mover) */
 function duplicarBloqueActual() {
-  if (!idEnEdicion) return;
-  const orig = bloques.find(b => b.id === idEnEdicion);
+  const orig = estado.bloques.find(b => b.id === estado.idEnEdicion);
   if (!orig) return;
-  bloques.push({ ...orig, id: nuevoId(), titulo: orig.titulo + " (copia)" });
+  estado.bloques.push({ ...orig, id: nuevoId(), titulo: orig.titulo + " (copia)" });
   guardar();
-  cerrarModal("modal-bloque");
+  cerrarModales();
   render();
 }
 
-/* ---------------------------------------------------------------------------
-   7. ATAJO: copiar todos los bloques de un día al resto de la semana
-   --------------------------------------------------------------------------- */
+/* ----- 10. COPIAR UN DÍA A TODA LA SEMANA ----- */
+
 function copiarDiaATodos(dia) {
-  const delDia = bloques.filter(b => b.dia === dia);
-  if (delDia.length === 0) {
-    alert("Este día no tiene bloques para copiar.");
-    return;
-  }
-  if (!confirm(`Se copiarán los ${delDia.length} bloque(s) de ${DIAS[dia]} a los otros 6 días.\n\nLos bloques que ya existan en esos días se conservarán.\n¿Continuar?`)) {
-    return;
-  }
+  const delDia = estado.bloques.filter(b => b.dia === dia);
+  if (!delDia.length) { alert("Este día no tiene bloques para copiar."); return; }
+  if (!confirm("Se copiarán los " + delDia.length + " bloque(s) de " + DIAS[dia] +
+    " a los otros 6 días. Los bloques existentes se conservan. ¿Continuar?")) return;
   for (let d = 0; d < 7; d++) {
     if (d === dia) continue;
-    delDia.forEach(b => {
-      bloques.push({ ...b, id: nuevoId(), dia: d });
-    });
+    delDia.forEach(b => estado.bloques.push({ ...b, id: nuevoId(), dia: d }));
   }
   guardar();
   render();
 }
 
-/* ---------------------------------------------------------------------------
-   8. CONFIGURACIÓN: personas, horario, granularidad y categorías
-   --------------------------------------------------------------------------- */
+/* ----- 11. MODAL DE CONFIGURACIÓN ----- */
+
+let catsDraft = []; // copia editable de las categorías mientras el modal está abierto
+
 function abrirConfig() {
-  document.getElementById("c-persona1").value = config.personas[0];
-  document.getElementById("c-persona2").value = config.personas[1];
-  document.getElementById("c-inicio").value = minutosATexto(config.horaInicio);
-  document.getElementById("c-fin").value = minutosATexto(config.horaFin);
-  document.getElementById("c-granularidad").value = config.granularidad;
+  const cfg = estado.config;
+  document.getElementById("c-persona1").value = cfg.personas[0];
+  document.getElementById("c-persona2").value = cfg.personas[1];
+  document.getElementById("c-inicio").value = fmt(cfg.horaInicio);
+  document.getElementById("c-fin").value = fmt(cfg.horaFin);
+  document.getElementById("c-granularidad").value = cfg.granularidad;
+  catsDraft = cfg.categorias.map(c => ({ ...c }));
   renderEditorCategorias();
-  abrirModal("modal-config");
+  document.getElementById("modal-config").hidden = false;
 }
 
-/* Dibuja las filas editables de categorías dentro de Configuración */
 function renderEditorCategorias() {
   const lista = document.getElementById("cat-lista");
   lista.innerHTML = "";
-  config.categorias.forEach((cat, idx) => {
+  catsDraft.forEach((cat, idx) => {
     const fila = document.createElement("div");
     fila.className = "cat-fila";
     fila.innerHTML = `
-      <input type="color" value="${cat.color}" data-idx="${idx}" data-campo="color">
-      <input type="text" value="${escapar(cat.nombre)}" data-idx="${idx}" data-campo="nombre">
-      <button class="peligro pequeno" title="Eliminar categoría" onclick="eliminarCategoria(${idx})">🗑️</button>
-    `;
+      <input type="color" value="${cat.color}">
+      <input class="input" type="text" value="${escapar(cat.nombre)}">
+      <button class="btn btn-ghost btn-icon" style="width:30px;height:30px" title="Eliminar categoría">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>`;
+    fila.querySelector('input[type=color]').addEventListener("input", ev => { catsDraft[idx].color = ev.target.value; });
+    fila.querySelector('input[type=text]').addEventListener("input", ev => { catsDraft[idx].nombre = ev.target.value; });
+    fila.querySelector("button").addEventListener("click", () => {
+      if (catsDraft.length <= 1) { alert("Debe existir al menos una categoría."); return; }
+      catsDraft.splice(idx, 1);
+      renderEditorCategorias();
+    });
     lista.appendChild(fila);
   });
 }
 
-/* Añade una fila de categoría nueva (vacía) en el editor */
 function agregarCategoriaFila() {
-  config.categorias.push({ id: "cat" + nuevoId(), nombre: "Nueva categoría", color: "#9aa4b2" });
+  catsDraft.push({ id: "cat" + nuevoId(), nombre: "Nueva categoría", color: "#9b9797" });
   renderEditorCategorias();
 }
 
-/* Elimina una categoría del editor (debe quedar al menos una) */
-function eliminarCategoria(idx) {
-  if (config.categorias.length <= 1) {
-    alert("Debe existir al menos una categoría.");
-    return;
-  }
-  config.categorias.splice(idx, 1);
-  renderEditorCategorias();
-}
-
-/* Guarda todos los cambios de configuración */
 function guardarConfig() {
-  // Leer las filas de categorías del editor
-  const nuevasCats = [];
-  document.querySelectorAll("#cat-lista .cat-fila").forEach((fila, idx) => {
-    const color = fila.querySelector('[data-campo="color"]').value;
-    const nombre = fila.querySelector('[data-campo="nombre"]').value.trim() || "Sin nombre";
-    // Conservamos el id existente si lo hay (para no romper bloques ya creados)
-    const idExistente = config.categorias[idx] ? config.categorias[idx].id : "cat" + nuevoId();
-    nuevasCats.push({ id: idExistente, nombre, color });
-  });
-
-  const nuevoInicio = textoAMinutos(document.getElementById("c-inicio").value || "05:30");
-  const nuevoFin = textoAMinutos(document.getElementById("c-fin").value || "22:30");
-  if (nuevoFin <= nuevoInicio) {
-    alert("La hora final debe ser posterior a la hora inicial.");
-    return;
-  }
-
-  config.personas = [
-    document.getElementById("c-persona1").value.trim() || "Persona A",
-    document.getElementById("c-persona2").value.trim() || "Persona B"
-  ];
-  config.horaInicio = nuevoInicio;
-  config.horaFin = nuevoFin;
-  config.granularidad = parseInt(document.getElementById("c-granularidad").value, 10);
-  config.categorias = nuevasCats;
-
+  const ini = aMinutos(document.getElementById("c-inicio").value || "06:00");
+  const fin = aMinutos(document.getElementById("c-fin").value || "23:00");
+  if (fin <= ini) { alert("La hora final debe ser posterior a la inicial."); return; }
+  estado.config = {
+    personas: [
+      document.getElementById("c-persona1").value.trim() || "Persona A",
+      document.getElementById("c-persona2").value.trim() || "Persona B"
+    ],
+    horaInicio: ini,
+    horaFin: fin,
+    granularidad: parseInt(document.getElementById("c-granularidad").value, 10),
+    categorias: catsDraft.map(c => ({ ...c, nombre: (c.nombre || "").trim() || "Sin nombre" }))
+  };
   guardar();
-  cerrarModal("modal-config");
+  cerrarModales();
   render();
 }
 
-/* Borra TODOS los datos y vuelve a la configuración por defecto */
 function borrarTodo() {
   if (!confirm("Esto eliminará TODOS los bloques y volverá a la configuración inicial. ¿Seguro?")) return;
-  localStorage.removeItem(CLAVE_ALMACEN);
-  config = configPorDefecto();
-  bloques = [];
-  cerrarModal("modal-config");
+  localStorage.removeItem(CLAVE);
+  localStorage.removeItem(CLAVE_V1);
+  estado.config = configPorDefecto();
+  estado.bloques = [];
+  cerrarModales();
   render();
 }
 
-/* ---------------------------------------------------------------------------
-   9. EXPORTAR / IMPORTAR / (imprimir usa window.print del navegador)
-   --------------------------------------------------------------------------- */
+/* ----- 12. EXPORTAR / IMPORTAR / TEMA OSCURO / VISTAS ----- */
 
-/* Descarga un archivo JSON con toda la información (respaldo) */
 function exportarJSON() {
-  const datos = JSON.stringify({ config, bloques }, null, 2);
+  const datos = JSON.stringify({ config: estado.config, bloques: estado.bloques }, null, 2);
   const blob = new Blob([datos], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  const fecha = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = "cronograma-" + fecha + ".json";
+  a.download = "cronograma-" + new Date().toISOString().slice(0, 10) + ".json";
   a.click();
   URL.revokeObjectURL(url);
 }
 
-/* Lee un archivo JSON exportado antes y reemplaza el cronograma actual */
 function importarJSON(evento) {
   const archivo = evento.target.files[0];
   if (!archivo) return;
   const lector = new FileReader();
-  lector.onload = (e) => {
+  lector.onload = e => {
     try {
       const datos = JSON.parse(e.target.result);
-      if (!datos.config || !Array.isArray(datos.bloques)) {
-        throw new Error("El archivo no tiene el formato esperado.");
-      }
+      if (!datos.config || !Array.isArray(datos.bloques)) throw new Error("El archivo no tiene el formato esperado.");
       if (!confirm("Al importar se reemplazará el cronograma actual. ¿Continuar?")) return;
-      config = datos.config;
-      bloques = datos.bloques;
+      estado.config = datos.config;
+      estado.bloques = datos.bloques;
       guardar();
       render();
-      alert("Cronograma importado correctamente.");
     } catch (err) {
       alert("No se pudo importar el archivo: " + err.message);
     }
   };
   lector.readAsText(archivo);
-  evento.target.value = "";  // permite volver a importar el mismo archivo si hace falta
+  evento.target.value = "";
 }
 
-/* ---------------------------------------------------------------------------
-   UTILIDADES DE VENTANAS MODALES
-   --------------------------------------------------------------------------- */
-function abrirModal(id) { document.getElementById(id).classList.add("abierto"); }
-function cerrarModal(id) { document.getElementById(id).classList.remove("abierto"); }
+function aplicarTema() {
+  document.body.dataset.theme = estado.oscuro ? "dark" : "light";
+  document.getElementById("icono-sol").style.display = estado.oscuro ? "" : "none";
+  document.getElementById("icono-luna").style.display = estado.oscuro ? "none" : "";
+}
+function toggleOscuro() {
+  estado.oscuro = !estado.oscuro;
+  aplicarTema();
+  guardar();
+}
 
-// Cerrar un modal al hacer clic fuera de él (en el fondo oscuro)
-document.querySelectorAll(".modal-fondo").forEach(fondo => {
-  fondo.addEventListener("click", (ev) => {
-    if (ev.target === fondo) fondo.classList.remove("abierto");
-  });
-});
-// Cerrar cualquier modal con la tecla Escape
-document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") {
-    document.querySelectorAll(".modal-fondo.abierto").forEach(m => m.classList.remove("abierto"));
-  }
+function cambiarDia(delta) {
+  estado.diaActivo = (estado.diaActivo + delta + 7) % 7;
+  render();
+}
+
+function cerrarModales() {
+  document.getElementById("modal-bloque").hidden = true;
+  document.getElementById("modal-config").hidden = true;
+  estado.idEnEdicion = null;
+}
+
+/* ----- EVENTOS GLOBALES Y ARRANQUE ----- */
+
+// Cambiar de vista con el selector segmentado
+document.getElementById("selector-vista").addEventListener("change", ev => {
+  estado.vista = ev.target.value;
+  render();
 });
 
-/* ---------------------------------------------------------------------------
-   ARRANQUE: cargar datos guardados y dibujar la pantalla
-   --------------------------------------------------------------------------- */
+// Cerrar modales con clic en el fondo o con Escape
+document.querySelectorAll(".dialog-backdrop").forEach(fondo => {
+  fondo.addEventListener("click", ev => { if (ev.target === fondo) cerrarModales(); });
+});
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") cerrarModales(); });
+
+// La línea de "ahora" se actualiza sola cada minuto
+setInterval(() => {
+  if (estado.vista === "semana" || estado.vista === "dia") render();
+}, 60000);
+
 cargar();
+aplicarTema();
 render();
 </script>
 </body>
