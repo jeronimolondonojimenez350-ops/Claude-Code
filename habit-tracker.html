@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rastreador de hábitos</title>
+<!--
+  ============================================================================
+  RASTREADOR DE HÁBITOS Y PROGRESO PERSONAL (versión avanzada)
+  ----------------------------------------------------------------------------
+  · Un solo archivo HTML: ábrelo con doble clic, sin servidor ni instalaciones.
+  · Los gráficos usan Chart.js desde un CDN (necesita internet solo para eso;
+    si no hay red, todo lo demás sigue funcionando).
+  · Los datos se guardan solos en tu navegador (localStorage).
+  · Busca las marcas ">>> PERSONALIZAR <<<" para las zonas fáciles de editar.
+  ============================================================================
+-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<style>
+/* ==========================================================================
+   1. PALETA DE COLORES (variables CSS)
+   El modo claro se define en :root; el oscuro lo sobreescribe más abajo.
+   >>> PERSONALIZAR <<< : cambia aquí los colores de toda la aplicación.
+   ========================================================================== */
+:root{
+  color-scheme: light;
+  --plano:        #f9f9f7;   /* fondo de la página            */
+  --superficie:   #fcfcfb;   /* fondo de tarjetas y tablas    */
+  --tinta:        #0b0b0b;   /* texto principal               */
+  --tinta-2:      #52514e;   /* texto secundario              */
+  --tinta-suave:  #898781;   /* ejes, etiquetas discretas     */
+  --linea:        #e1e0d9;   /* rejillas y separadores finos  */
+  --eje:          #c3c2b7;   /* línea base de los ejes        */
+  --borde:        rgba(11,11,11,.10);
+  --serie-1:      #2a78d6;   /* azul: métrica de cumplimiento */
+  --serie-2:      #008300;   /* verde: segunda serie (motivación) */
+  --bueno:        #0ca30c;   /* estado "cumplido" (casillas)  */
+  --critico:      #d03b3b;   /* estado "peligro" (borrar)     */
+  --exito-texto:  #006300;   /* texto de éxito legible        */
+  /* Escala secuencial azul para el mapa de calor (de menos a más) */
+  --calor-1: #cde2fb; --calor-2: #86b6ef; --calor-3: #3987e5; --calor-4: #184f95;
+  --sombra: 0 1px 3px rgba(0,0,0,.06);
+}
+/* Modo oscuro elegido por el sistema (si el usuario no forzó uno) */
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-tema="claro"])){
+    color-scheme: dark;
+    --plano: #0d0d0d; --superficie: #1a1a19;
+    --tinta: #ffffff; --tinta-2: #c3c2b7; --tinta-suave: #898781;
+    --linea: #2c2c2a; --eje: #383835; --borde: rgba(255,255,255,.10);
+    --serie-1: #3987e5; --exito-texto: #0ca30c;
+    --calor-1: #0d366b; --calor-2: #1c5cab; --calor-3: #2a78d6; --calor-4: #6da7ec;
+    --sombra: none;
+  }
+}
+/* Modo oscuro forzado con el botón 🌙 (gana sobre el sistema) */
+:root[data-tema="oscuro"]{
+  color-scheme: dark;
+  --plano: #0d0d0d; --superficie: #1a1a19;
+  --tinta: #ffffff; --tinta-2: #c3c2b7; --tinta-suave: #898781;
+  --linea: #2c2c2a; --eje: #383835; --borde: rgba(255,255,255,.10);
+  --serie-1: #3987e5; --exito-texto: #0ca30c;
+  --calor-1: #0d366b; --calor-2: #1c5cab; --calor-3: #2a78d6; --calor-4: #6da7ec;
+  --sombra: none;
+}
+
+/* ==========================================================================
+   2. ESTILOS GENERALES
+   ========================================================================== */
+*{ box-sizing:border-box; }
+body{
+  margin:0; background:var(--plano); color:var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size:15px; line-height:1.45;
+}
+main{ max-width:1180px; margin:0 auto; padding:0 16px 48px; }
+h1{ font-size:1.35rem; margin:0; }
+h2{ font-size:1.02rem; margin:0 0 10px; }
+h3{ font-size:.95rem; margin:0 0 8px; }
+button{
+  font:inherit; color:inherit; background:var(--superficie);
+  border:1px solid var(--borde); border-radius:8px;
+  padding:6px 11px; cursor:pointer;
+}
+button:hover{ border-color:var(--tinta-suave); }
+select,input,textarea{
+  font:inherit; color:inherit; background:var(--superficie);
+  border:1px solid var(--borde); border-radius:8px; padding:6px 8px;
+}
+textarea{ width:100%; min-height:70px; resize:vertical; }
+.tarjeta{
+  background:var(--superficie); border:1px solid var(--borde);
+  border-radius:12px; padding:16px; box-shadow:var(--sombra);
+}
+.pista{ color:var(--tinta-suave); font-size:.8rem; }
+
+/* --- Cabecera ------------------------------------------------------------ */
+.cabecera{
+  display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+  justify-content:space-between; max-width:1180px; margin:0 auto;
+  padding:18px 16px 10px;
+}
+.cabecera .subtitulo{ margin:2px 0 0; color:var(--tinta-2); font-size:.85rem; }
+.controles{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.selector-mes{ display:flex; gap:6px; align-items:center; }
+.selector-mes input[type=number]{ width:78px; }
+.acciones{ display:flex; flex-wrap:wrap; gap:6px; }
+
+/* --- Fichas de resumen y dona -------------------------------------------- */
+.resumen{ display:grid; grid-template-columns: 1fr 300px; gap:14px; margin-top:14px; }
+.fichas{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+.ficha .valor{ font-size:1.9rem; font-weight:650; }
+.ficha .nombre{ color:var(--tinta-2); font-size:.85rem; }
+.lienzo{ position:relative; height:250px; }
+.lienzo-dona{ position:relative; height:208px; }
+
+/* --- Filtros de categoría ------------------------------------------------- */
+.filtros{ display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 0; align-items:center; }
+.filtros .chip{ border-radius:999px; padding:4px 12px; font-size:.85rem; }
+.filtros .chip.activo{ background:var(--serie-1); color:#fff; border-color:transparent; }
+
+/* --- Cuadrícula de hábitos ------------------------------------------------ */
+.envoltura-tabla{ overflow-x:auto; margin-top:10px; }
+.tabla-habitos{ border-collapse:collapse; font-size:.82rem; min-width:100%; }
+.tabla-habitos th,.tabla-habitos td{
+  border:1px solid var(--linea); padding:2px 4px; text-align:center; white-space:nowrap;
+}
+.tabla-habitos thead th{ color:var(--tinta-2); font-weight:600; background:var(--superficie); }
+.tabla-habitos .celda-habito{
+  position:sticky; left:0; z-index:2; background:var(--superficie);
+  text-align:left; padding:4px 8px; max-width:230px; overflow:hidden;
+  text-overflow:ellipsis; font-weight:500;
+}
+.tabla-habitos .celda-habito .cat{
+  display:inline-block; margin-left:6px; padding:0 7px; border-radius:999px;
+  border:1px solid var(--borde); color:var(--tinta-suave); font-size:.68rem; font-weight:400;
+}
+.inicio-semana{ border-left:3px solid var(--eje) !important; }
+.col-hoy{ background:color-mix(in srgb, var(--serie-1) 12%, var(--superficie)); }
+.celda-dia{
+  width:30px; height:26px; padding:0; border:none; border-radius:5px;
+  background:transparent; display:block; margin:auto; font-size:.8rem; line-height:1;
+}
+.celda-dia:hover{ outline:2px solid var(--serie-1); }
+.celda-dia.cumplido{ background:var(--bueno); color:#fff; }
+.celda-dia.noprog{
+  background:repeating-linear-gradient(45deg, transparent 0 3px, var(--linea) 3px 5px);
+  cursor:not-allowed; opacity:.6;
+}
+.fila-extra td{ background:color-mix(in srgb, var(--plano) 60%, var(--superficie)); }
+.fila-extra .celda-habito{ font-weight:600; color:var(--tinta-2); }
+.punto-nota{ color:var(--serie-1); }
+.leyenda{ display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; font-size:.8rem; color:var(--tinta-2); }
+.leyenda .muestra{
+  display:inline-block; width:14px; height:14px; border-radius:4px;
+  vertical-align:-2px; margin-right:5px; border:1px solid var(--borde);
+}
+
+/* --- Rejilla de gráficos --------------------------------------------------- */
+.rejilla-graficos{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:14px; margin-top:16px;
+}
+.aviso-sin-red{ display:none; color:var(--tinta-suave); font-size:.85rem; }
+body.sin-chartjs .lienzo, body.sin-chartjs .lienzo-dona{ display:none; }
+body.sin-chartjs .aviso-sin-red{ display:block; }
+
+/* --- Análisis y TOP -------------------------------------------------------- */
+.dos-columnas{ display:grid; grid-template-columns: 1.6fr 1fr; gap:14px; margin-top:16px; }
+.tabla-analisis{ width:100%; border-collapse:collapse; font-size:.85rem; }
+.tabla-analisis th,.tabla-analisis td{ padding:6px 8px; border-bottom:1px solid var(--linea); text-align:right; }
+.tabla-analisis th:first-child,.tabla-analisis td:first-child{ text-align:left; }
+.tabla-analisis th{ color:var(--tinta-2); font-weight:600; }
+.tabla-analisis td{ font-variant-numeric: tabular-nums; }
+.barra{ background:var(--linea); border-radius:4px; height:8px; min-width:90px; overflow:hidden; }
+.barra > span{ display:block; height:100%; background:var(--serie-1); border-radius:4px; }
+.top-lista{ list-style:none; margin:0; padding:0; }
+.top-lista li{ display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--linea); }
+.top-lista .pos{ width:26px; text-align:center; }
+.top-lista .nom{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.top-lista .pct{ font-variant-numeric:tabular-nums; width:44px; text-align:right; }
+
+/* --- Mapa de calor ---------------------------------------------------------- */
+.mapa-calor{ display:grid; grid-template-columns:repeat(7, 22px); gap:3px; margin-top:10px; }
+.mapa-calor .cab{ font-size:.68rem; color:var(--tinta-suave); text-align:center; }
+.mapa-calor .dia{
+  width:22px; height:22px; border-radius:4px;
+  background:var(--superficie); border:1px solid var(--linea);
+  font-size:.6rem; color:transparent;
+}
+.mapa-calor .dia.n1{ background:var(--calor-1); border-color:transparent; }
+.mapa-calor .dia.n2{ background:var(--calor-2); border-color:transparent; }
+.mapa-calor .dia.n3{ background:var(--calor-3); border-color:transparent; }
+.mapa-calor .dia.n4{ background:var(--calor-4); border-color:transparent; }
+.mapa-calor .dia.fuera{
+  background:repeating-linear-gradient(45deg, transparent 0 3px, var(--linea) 3px 5px);
+  border-color:transparent;
+}
+.mapa-calor .dia.vacio{ background:transparent; border:none; }
+.leyenda-calor{ display:flex; align-items:center; gap:4px; margin-top:10px; font-size:.78rem; color:var(--tinta-2); }
+.leyenda-calor i{ width:14px; height:14px; border-radius:3px; display:inline-block; }
+
+/* --- Reflexiones ------------------------------------------------------------ */
+.reflexiones{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+
+/* --- Diálogos (ventanas emergentes) ----------------------------------------- */
+dialog{
+  background:var(--superficie); color:var(--tinta);
+  border:1px solid var(--borde); border-radius:14px; padding:18px;
+  max-width:640px; width:min(94vw, 640px);
+}
+dialog::backdrop{ background:rgba(0,0,0,.45); }
+.editor-habito{
+  display:grid; grid-template-columns:56px 1fr 110px; gap:6px;
+  padding:10px 0; border-bottom:1px solid var(--linea); align-items:center;
+}
+.editor-habito .fila-meta{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:.85rem; }
+.editor-habito .dias-meta label{ margin-right:4px; font-size:.8rem; }
+.acciones-dialogo{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+.btn-primario{ background:var(--serie-1); color:#fff; border-color:transparent; }
+.btn-peligro{ color:var(--critico); }
+
+/* --- Secciones -------------------------------------------------------------- */
+section{ margin-top:16px; }
+
+/* ==========================================================================
+   3. RESPONSIVE (móvil)
+   ========================================================================== */
+@media (max-width:820px){
+  .resumen{ grid-template-columns:1fr; }
+  .dos-columnas{ grid-template-columns:1fr; }
+  .cabecera{ flex-direction:column; align-items:flex-start; }
+}
+
+/* ==========================================================================
+   4. VISTA DE IMPRESIÓN (Ctrl+P → guardar como PDF)
+   Se ocultan los controles y se fuerzan colores claros.
+   ========================================================================== */
+@media print{
+  :root, :root[data-tema="oscuro"]{
+    color-scheme:light;
+    --plano:#fff; --superficie:#fff; --tinta:#0b0b0b; --tinta-2:#52514e;
+    --tinta-suave:#898781; --linea:#d5d4cd; --eje:#c3c2b7; --borde:rgba(11,11,11,.2);
+    --serie-1:#2a78d6; --exito-texto:#006300;
+    --calor-1:#cde2fb; --calor-2:#86b6ef; --calor-3:#3987e5; --calor-4:#184f95;
+    --sombra:none;
+  }
+  .acciones, .filtros, .selector-mes button, .aviso-sin-red, dialog{ display:none !important; }
+  .envoltura-tabla{ overflow:visible; }
+  .tabla-habitos{ font-size:.65rem; }
+  .celda-dia{ width:20px; height:18px; }
+  section, .tarjeta{ break-inside:avoid; }
+  body{ font-size:12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========================================================================
+     CABECERA: título, selector de mes y botones de acciones
+     ======================================================================== -->
+<header class="cabecera">
+  <div>
+    <h1>📊 Rastreador de hábitos</h1>
+    <p class="subtitulo">Marca cada día, observa tu progreso y no rompas la racha.</p>
+  </div>
+  <div class="controles">
+    <div class="selector-mes">
+      <button id="mes-anterior" title="Mes anterior">‹</button>
+      <select id="sel-mes" aria-label="Mes"></select>
+      <input id="sel-anio" type="number" min="2000" max="2100" aria-label="Año">
+      <button id="mes-siguiente" title="Mes siguiente">›</button>
+    </div>
+    <div class="acciones">
+      <button id="btn-tema" title="Cambiar entre modo claro y oscuro">🌙</button>
+      <button id="btn-ajustes" title="Añadir, editar o borrar hábitos y sus metas">⚙️ Hábitos</button>
+      <button id="btn-exportar" title="Descargar todos los datos como archivo JSON">⬇️ JSON</button>
+      <button id="btn-importar" title="Recuperar datos desde un archivo JSON">⬆️ Importar</button>
+      <input type="file" id="entrada-importar" accept=".json,application/json" hidden>
+      <button id="btn-csv" title="Descargar la tabla de análisis como CSV">📄 CSV</button>
+      <button id="btn-imprimir" title="Vista de impresión limpia (o guardar como PDF)">🖨️ Imprimir</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ====== RESUMEN GLOBAL: fichas + dona ================================= -->
+  <section class="resumen">
+    <div class="fichas">
+      <div class="tarjeta ficha"><div class="valor" id="ficha-meta">–</div><div class="nombre">🎯 Meta total del mes</div></div>
+      <div class="tarjeta ficha"><div class="valor" id="ficha-completados">–</div><div class="nombre">✅ Completados</div></div>
+      <div class="tarjeta ficha"><div class="valor" id="ficha-restantes">–</div><div class="nombre">⏳ Restantes</div></div>
+      <div class="tarjeta ficha"><div class="valor" id="ficha-media">–</div><div class="nombre">📈 Media diaria</div></div>
+    </div>
+    <div class="tarjeta">
+      <h2>Estadística general</h2>
+      <div class="lienzo-dona"><canvas id="gf-dona"></canvas></div>
+      <p class="aviso-sin-red">Sin conexión: el gráfico no está disponible, pero tus datos y tablas sí.</p>
+    </div>
+  </section>
+
+  <!-- ====== FILTROS DE CATEGORÍA ========================================== -->
+  <div class="filtros" id="filtros" role="group" aria-label="Filtrar por categoría"></div>
+  <p class="pista">El filtro se aplica a la cuadrícula, contadores, gráficos de progreso, análisis y ranking.</p>
+
+  <!-- ====== CUADRÍCULA DEL MES ============================================ -->
+  <section class="tarjeta">
+    <h2 id="titulo-mes">Cuadrícula del mes</h2>
+    <div class="envoltura-tabla" id="envoltura-rejilla"></div>
+    <div class="leyenda">
+      <span><i class="muestra" style="background:var(--bueno)"></i>Cumplido</span>
+      <span><i class="muestra"></i>Pendiente</span>
+      <span><i class="muestra" style="background:repeating-linear-gradient(45deg, transparent 0 3px, var(--linea) 3px 5px)"></i>No programado ese día</span>
+      <span><i class="muestra" style="background:color-mix(in srgb, var(--serie-1) 12%, var(--superficie))"></i>Hoy</span>
+      <span>😞→😄 Ánimo (clic para cambiar) · 1→5 Motivación · 📝 Nota del día</span>
+    </div>
+  </section>
+
+  <!-- ====== GRÁFICOS DE PROGRESO ========================================== -->
+  <section class="rejilla-graficos">
+    <article class="tarjeta">
+      <h2>Progreso diario</h2>
+      <p class="pista">% de hábitos completados cada día del mes.</p>
+      <div class="lienzo"><canvas id="gf-diario"></canvas></div>
+      <p class="aviso-sin-red">Gráfico no disponible sin conexión.</p>
+    </article>
+    <article class="tarjeta">
+      <h2>Progreso semanal</h2>
+      <p class="pista">% de cumplimiento por semana (solo días ya transcurridos).</p>
+      <div class="lienzo"><canvas id="gf-semanal"></canvas></div>
+      <p class="aviso-sin-red">Gráfico no disponible sin conexión.</p>
+    </article>
+    <article class="tarjeta">
+      <h2>Estado mental</h2>
+      <p class="pista">Ánimo y motivación diarios (escala 1 a 5).</p>
+      <div class="lienzo"><canvas id="gf-mental"></canvas></div>
+      <p class="aviso-sin-red">Gráfico no disponible sin conexión.</p>
+    </article>
+    <article class="tarjeta">
+      <h2>Correlación ánimo ↔ hábitos</h2>
+      <p class="pista">Cada punto es un día: % de cumplimiento frente a tu estado mental.</p>
+      <div class="lienzo"><canvas id="gf-correlacion"></canvas></div>
+      <p id="texto-correlacion" class="pista"></p>
+      <p class="aviso-sin-red">Gráfico no disponible sin conexión.</p>
+    </article>
+  </section>
+
+  <!-- ====== ANÁLISIS POR HÁBITO + TOP ===================================== -->
+  <section class="dos-columnas">
+    <article class="tarjeta">
+      <h2>Análisis por hábito</h2>
+      <div class="envoltura-tabla" id="envoltura-analisis"></div>
+    </article>
+    <article class="tarjeta">
+      <h2>🏆 TOP hábitos</h2>
+      <p class="pista">Ordenados por nivel de cumplimiento del mes.</p>
+      <ol class="top-lista" id="top-lista"></ol>
+    </article>
+  </section>
+
+  <!-- ====== MAPA DE CALOR ================================================== -->
+  <section class="tarjeta">
+    <h2>Mapa de calor del mes</h2>
+    <label class="pista">Ver:
+      <select id="sel-calor"></select>
+    </label>
+    <div id="mapa-calor" class="mapa-calor" aria-label="Calendario de intensidad"></div>
+    <div class="leyenda-calor" id="leyenda-calor">
+      <span>Menos</span>
+      <i style="background:var(--superficie); border:1px solid var(--linea)"></i>
+      <i style="background:var(--calor-1)"></i><i style="background:var(--calor-2)"></i>
+      <i style="background:var(--calor-3)"></i><i style="background:var(--calor-4)"></i>
+      <span>Más</span>
+    </div>
+  </section>
+
+  <!-- ====== REFLEXIONES ==================================================== -->
+  <section class="tarjeta" id="sec-reflexiones">
+    <h2>🪞 Reflexiones</h2>
+    <p class="pista">Se guardan solas mientras escribes. Las notas de cada día se abren con 📝 en la cuadrícula.</p>
+    <div class="reflexiones" id="reflexiones-semanales"></div>
+    <div style="margin-top:12px">
+      <h3>Reflexión del mes</h3>
+      <textarea id="reflexion-mensual" placeholder="¿Qué funcionó este mes? ¿Qué vas a cambiar el próximo?"></textarea>
+    </div>
+  </section>
+
+  <!-- ====== HISTÓRICO MES A MES =========================================== -->
+  <section class="tarjeta">
+    <h2>📚 Histórico mes a mes</h2>
+    <p class="pista">Cumplimiento global de cada mes registrado (todos los hábitos, sin filtros).</p>
+    <div class="lienzo"><canvas id="gf-historico"></canvas></div>
+    <p class="aviso-sin-red">Gráfico no disponible sin conexión.</p>
+    <div class="envoltura-tabla" id="envoltura-historico"></div>
+  </section>
+</main>
+
+<!-- ====== DIÁLOGO: nota del día ============================================ -->
+<dialog id="dlg-nota">
+  <h3 id="dlg-nota-titulo">Nota del día</h3>
+  <textarea id="dlg-nota-texto" placeholder="¿Qué pasó hoy? ¿Qué te ayudó o te lo puso difícil?"></textarea>
+  <div class="acciones-dialogo">
+    <button id="dlg-nota-cerrar">Cancelar</button>
+    <button id="dlg-nota-guardar" class="btn-primario">Guardar</button>
+  </div>
+</dialog>
+
+<!-- ====== DIÁLOGO: gestión de hábitos y metas ============================== -->
+<dialog id="dlg-ajustes">
+  <h3>⚙️ Hábitos y metas</h3>
+  <p class="pista">Cada hábito tiene emoji, nombre, categoría y una meta:
+  <b>diario</b>, <b>X veces por semana</b> o <b>días concretos</b>.
+  El % de cumplimiento se calcula según esa meta.</p>
+  <div id="editor-habitos"></div>
+  <datalist id="lista-categorias"></datalist>
+  <div class="acciones-dialogo">
+    <button id="btn-anadir-habito">＋ Añadir hábito</button>
+    <button id="dlg-ajustes-cerrar">Cancelar</button>
+    <button id="dlg-ajustes-guardar" class="btn-primario">Guardar cambios</button>
+  </div>
+</dialog>
+
+<noscript><p style="padding:20px">Esta aplicación necesita JavaScript activado.</p></noscript>
+
+<script>
+"use strict";
+/* ==========================================================================
+   ÍNDICE DEL CÓDIGO
+   1. Constantes y estado (datos guardados)
+   2. Utilidades de fechas y semanas
+   3. Cálculos: metas, cumplimiento, rachas, correlación
+   4. Renderizado: rejilla, fichas, tablas, mapa de calor, reflexiones
+   5. Gráficos (Chart.js)
+   6. Exportar / importar / imprimir
+   7. Diálogos (notas y ajustes de hábitos)
+   8. Eventos e inicio
+   ========================================================================== */
+
+/* ==========================================================================
+   1. CONSTANTES Y ESTADO
+   ========================================================================== */
+const CLAVE_ALMACEN = "rastreadorHabitos.v1";   // clave usada en localStorage
+const NOMBRES_MES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio",
+                     "Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const LETRAS_DIA = ["L","M","X","J","V","S","D"];         // lunes = 0
+const EMOJIS_ANIMO = ["😞","😕","😐","🙂","😄"];           // ánimo 1..5
+
+/* >>> PERSONALIZAR <<<
+   Hábitos iniciales (solo se usan la primera vez que abres la aplicación;
+   después se editan desde el botón "⚙️ Hábitos").
+   meta puede ser:
+     { tipo:"diario" }                        → todos los días
+     { tipo:"semanal", veces:3 }              → 3 veces por semana
+     { tipo:"dias", dias:[0,2,4] }            → lunes, miércoles y viernes (L=0 … D=6) */
+function habitosPorDefecto(){
+  return [
+    { id:"h01", emoji:"⏰", nombre:"Despertar 05:00",                              categoria:"Rutina",  meta:{ tipo:"diario" } },
+    { id:"h02", emoji:"📖", nombre:"Leer 10 páginas",                              categoria:"Mente",   meta:{ tipo:"diario" } },
+    { id:"h03", emoji:"💪", nombre:"Gimnasio",                                     categoria:"Cuerpo",  meta:{ tipo:"diario" } },
+    { id:"h04", emoji:"🚿", nombre:"Ducha fría",                                   categoria:"Cuerpo",  meta:{ tipo:"diario" } },
+    { id:"h05", emoji:"🎯", nombre:"Seguir aprendiendo",                           categoria:"Mente",   meta:{ tipo:"diario" } },
+    { id:"h06", emoji:"🥑", nombre:"Comer saludable",                              categoria:"Cuerpo",  meta:{ tipo:"diario" } },
+    { id:"h07", emoji:"📋", nombre:"Planificación del día siguiente",              categoria:"Rutina",  meta:{ tipo:"diario" } },
+    { id:"h08", emoji:"🛌", nombre:"Dormir a las 10:00",                           categoria:"Rutina",  meta:{ tipo:"diario" } },
+    { id:"h09", emoji:"🏫", nombre:"Colegio",                                      categoria:"Deberes", meta:{ tipo:"diario" } },
+    { id:"h10", emoji:"📱", nombre:"No dispositivos 1.ª y última hora del día",    categoria:"Rutina",  meta:{ tipo:"diario" } },
+  ];
+}
+
+// Estado inicial la primera vez que se abre la aplicación.
+function estadoPorDefecto(){
+  return {
+    version: 1,
+    tema: "auto",           // "auto" | "claro" | "oscuro"
+    mesVisto: "2026-07",    // >>> PERSONALIZAR <<< mes inicial (AAAA-MM)
+    habitos: habitosPorDefecto(),
+    meses: {},              // datos de cada mes, clave "AAAA-MM"
+  };
+}
+
+// Carga el estado desde localStorage (o crea uno nuevo si no existe).
+function cargarEstado(){
+  try{
+    const crudo = localStorage.getItem(CLAVE_ALMACEN);
+    if(crudo){
+      const datos = JSON.parse(crudo);
+      if(datos && datos.version === 1 && Array.isArray(datos.habitos)) return datos;
+    }
+  }catch(e){ console.warn("No se pudo leer el almacén local:", e); }
+  return estadoPorDefecto();
+}
+
+// Guarda el estado completo. Se llama tras cada cambio (es barato).
+function guardarEstado(){
+  try{ localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(estado)); }
+  catch(e){ console.warn("No se pudo guardar:", e); }
+}
+
+let estado = cargarEstado();
+let filtroCategoria = "todas";   // filtro activo (no se guarda entre sesiones)
+let seleccionCalor = "global";   // qué se muestra en el mapa de calor
+const graficos = {};             // instancias de Chart.js activas
+
+// Devuelve (creando si hace falta) el bloque de datos del mes "AAAA-MM".
+function datosMes(clave){
+  if(!estado.meses[clave]){
+    estado.meses[clave] = {
+      marcas: {},        // { idHabito: { dia: true } }
+      animo: {},         // { dia: 1..5 }
+      motivacion: {},    // { dia: 1..5 }
+      notas: {},         // { dia: "texto" }
+      reflexiones: { semanas:{}, mes:"" },
+    };
+  }
+  const d = estado.meses[clave];
+  if(!d.reflexiones) d.reflexiones = { semanas:{}, mes:"" };
+  return d;
+}
+
+/* ==========================================================================
+   2. UTILIDADES DE FECHAS Y SEMANAS  (mes siempre 1..12)
+   ========================================================================== */
+function partirClave(clave){ const [a,m] = clave.split("-").map(Number); return [a,m]; }
+function claveDe(anio, mes){ return `${anio}-${String(mes).padStart(2,"0")}`; }
+function diasEnMes(anio, mes){ return new Date(anio, mes, 0).getDate(); }
+// Día de la semana con lunes = 0 … domingo = 6.
+function diaSemana(anio, mes, dia){ return (new Date(anio, mes-1, dia).getDay() + 6) % 7; }
+// Divide el mes en semanas (arrays de números de día); cada semana empieza en lunes.
+function semanasDelMes(anio, mes){
+  const semanas = []; let actual = [];
+  for(let d = 1; d <= diasEnMes(anio, mes); d++){
+    if(diaSemana(anio, mes, d) === 0 && actual.length){ semanas.push(actual); actual = []; }
+    actual.push(d);
+  }
+  if(actual.length) semanas.push(actual);
+  return semanas;
+}
+function hoyFecha(){ const h = new Date(); h.setHours(0,0,0,0); return h; }
+// ¿El día "dia" del mes visto es hoy? / ¿es futuro?
+function esHoy(anio, mes, dia){ const h = hoyFecha(); return h.getFullYear()===anio && h.getMonth()===mes-1 && h.getDate()===dia; }
+function esFuturo(anio, mes, dia){ return new Date(anio, mes-1, dia) > hoyFecha(); }
+
+/* ==========================================================================
+   3. CÁLCULOS
+   ========================================================================== */
+
+// Hábitos visibles según el filtro de categoría activo.
+function habitosActivos(){
+  if(filtroCategoria === "todas") return estado.habitos;
+  return estado.habitos.filter(h => (h.categoria || "Sin categoría") === filtroCategoria);
+}
+
+/* Peso esperado de un hábito en un día concreto (para el % diario):
+   diario → 1 · días concretos → 1 o 0 · X/semana → veces/7 (repartido). */
+function pesoEsperado(h, anio, mes, dia){
+  if(h.meta.tipo === "diario") return 1;
+  if(h.meta.tipo === "dias") return (h.meta.dias || []).includes(diaSemana(anio, mes, dia)) ? 1 : 0;
+  if(h.meta.tipo === "semanal") return (h.meta.veces || 1) / 7;
+  return 0;
+}
+function estaMarcado(clave, idHabito, dia){
+  const m = estado.meses[clave];
+  return !!(m && m.marcas[idHabito] && m.marcas[idHabito][dia]);
+}
+
+// Meta del mes para un hábito (nº de veces que debería cumplirse).
+function metaMesHabito(h, anio, mes){
+  const n = diasEnMes(anio, mes);
+  if(h.meta.tipo === "diario") return n;
+  if(h.meta.tipo === "dias"){
+    let c = 0;
+    for(let d = 1; d <= n; d++) if((h.meta.dias || []).includes(diaSemana(anio, mes, d))) c++;
+    return c;
+  }
+  // X por semana → proporcional a los días del mes (no siempre hay 31 días).
+  return Math.round((h.meta.veces || 1) * n / 7);
+}
+
+// Veces reales que se cumplió el hábito en el mes.
+function realMesHabito(h, clave){
+  const [anio, mes] = partirClave(clave);
+  let c = 0;
+  for(let d = 1; d <= diasEnMes(anio, mes); d++){
+    if(h.meta.tipo === "dias" && pesoEsperado(h, anio, mes, d) === 0) continue;
+    if(estaMarcado(clave, h.id, d)) c++;
+  }
+  return c;
+}
+
+// % de hábitos completados en un día (null si nada estaba programado).
+function pctDia(clave, dia){
+  const [anio, mes] = partirClave(clave);
+  let esperado = 0, hecho = 0;
+  for(const h of habitosActivos()){
+    const peso = pesoEsperado(h, anio, mes, dia);
+    if(peso <= 0) continue;
+    esperado += peso;
+    if(estaMarcado(clave, h.id, dia)) hecho++;
+  }
+  if(esperado <= 0) return null;
+  return Math.min(100, Math.round(hecho / esperado * 100));
+}
+
+// % de cumplimiento de una semana (solo días ya transcurridos, para no
+// penalizar la semana en curso). Devuelve null si aún no hay días contables.
+function pctSemana(clave, dias){
+  const [anio, mes] = partirClave(clave);
+  let meta = 0, real = 0;
+  for(const dia of dias){
+    if(esFuturo(anio, mes, dia)) continue;
+    for(const h of habitosActivos()){
+      meta += pesoEsperado(h, anio, mes, dia);
+      if(pesoEsperado(h, anio, mes, dia) > 0 && estaMarcado(clave, h.id, dia)) real++;
+    }
+  }
+  if(meta <= 0) return null;
+  return Math.min(100, Math.round(real / meta * 100));
+}
+
+/* Rachas de un hábito (actual y récord), calculadas sobre TODOS los meses
+   registrados en orden cronológico y solo hasta el día de hoy.
+   · diario / días concretos → se cuentan días programados consecutivos.
+   · X por semana → se cuentan semanas consecutivas que alcanzan la cuota
+     (las semanas cortadas por el cambio de mes cuentan por separado). */
+function rachasHabito(h){
+  const claves = Object.keys(estado.meses).sort();
+  const hoy = hoyFecha();
+  const unidades = [];   // lista de { cumplida, enCurso } en orden temporal
+
+  if(h.meta.tipo === "semanal"){
+    for(const clave of claves){
+      const [anio, mes] = partirClave(clave);
+      for(const dias of semanasDelMes(anio, mes)){
+        if(new Date(anio, mes-1, dias[0]) > hoy) continue;   // semana futura
+        let real = 0;
+        for(const d of dias) if(estaMarcado(clave, h.id, d)) real++;
+        const contieneHoy = dias.some(d => esHoy(anio, mes, d));
+        const cuota = Math.max(1, Math.round((h.meta.veces || 1) * dias.length / 7));
+        unidades.push({ cumplida: real >= cuota, enCurso: contieneHoy && real < cuota });
+      }
+    }
+    return contarRachas(unidades, "sem");
+  }
+
+  for(const clave of claves){
+    const [anio, mes] = partirClave(clave);
+    for(let d = 1; d <= diasEnMes(anio, mes); d++){
+      if(new Date(anio, mes-1, d) > hoy) break;              // días futuros no cuentan
+      if(pesoEsperado(h, anio, mes, d) <= 0) continue;       // día no programado
+      const cumplida = estaMarcado(clave, h.id, d);
+      unidades.push({ cumplida, enCurso: esHoy(anio, mes, d) && !cumplida });
+    }
+  }
+  return contarRachas(unidades, "días");
+}
+
+// Cuenta racha actual y mejor racha sobre la secuencia de unidades.
+// Una unidad "en curso" (hoy / esta semana, sin terminar) no rompe la racha.
+function contarRachas(unidades, unidad){
+  let mejor = 0, serie = 0;
+  for(const u of unidades){
+    if(u.cumplida){ serie++; if(serie > mejor) mejor = serie; }
+    else if(!u.enCurso){ serie = 0; }
+  }
+  let i = unidades.length - 1;
+  while(i >= 0 && unidades[i].enCurso) i--;
+  let actual = 0;
+  while(i >= 0 && unidades[i].cumplida){ actual++; i--; }
+  return { actual, mejor, unidad };
+}
+
+// Coeficiente de correlación de Pearson entre dos listas de números (o null).
+function pearson(xs, ys){
+  const n = xs.length;
+  if(n < 3) return null;                       // muy pocos datos para opinar
+  const mx = xs.reduce((s,v)=>s+v,0)/n, my = ys.reduce((s,v)=>s+v,0)/n;
+  let num = 0, dx2 = 0, dy2 = 0;
+  for(let i = 0; i < n; i++){
+    const dx = xs[i]-mx, dy = ys[i]-my;
+    num += dx*dy; dx2 += dx*dx; dy2 += dy*dy;
+  }
+  if(dx2 === 0 || dy2 === 0) return null;      // sin variación no hay correlación
+  return num / Math.sqrt(dx2 * dy2);
+}
+function describirCorrelacion(r){
+  if(r === null) return "aún no hay datos suficientes";
+  const abs = Math.abs(r);
+  const fuerza = abs < .2 ? "muy débil" : abs < .4 ? "débil" : abs < .6 ? "moderada" : abs < .8 ? "fuerte" : "muy fuerte";
+  const signo = r >= 0 ? "positiva" : "negativa";
+  return `r = ${r.toFixed(2)} (${fuerza}, ${signo})`;
+}
+
+// Totales del mes visto: meta, real y restante (con el filtro activo).
+function totalesMes(clave){
+  const [anio, mes] = partirClave(clave);
+  let meta = 0, real = 0;
+  for(const h of habitosActivos()){
+    meta += metaMesHabito(h, anio, mes);
+    real += realMesHabito(h, clave);
+  }
+  return { meta, real, restante: Math.max(0, meta - real) };
+}
+
+/* ==========================================================================
+   4. RENDERIZADO (HTML)
+   ========================================================================== */
+const $ = sel => document.querySelector(sel);
+const escapar = t => String(t ?? "").replace(/[&<>"']/g,
+  c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+// --- Selector de mes -------------------------------------------------------
+function renderizarSelectorMes(){
+  const [anio, mes] = partirClave(estado.mesVisto);
+  $("#sel-mes").innerHTML = NOMBRES_MES
+    .map((n,i)=>`<option value="${i+1}" ${i+1===mes?"selected":""}>${n}</option>`).join("");
+  $("#sel-anio").value = anio;
+  $("#titulo-mes").textContent = `Cuadrícula de ${NOMBRES_MES[mes-1]} ${anio}`;
+}
+
+// --- Filtros de categoría ----------------------------------------------------
+function renderizarFiltros(){
+  const categorias = [...new Set(estado.habitos.map(h => h.categoria || "Sin categoría"))];
+  if(!categorias.includes(filtroCategoria) && filtroCategoria !== "todas") filtroCategoria = "todas";
+  $("#filtros").innerHTML =
+    [`<button class="chip ${filtroCategoria==="todas"?"activo":""}" data-cat="todas">Todas</button>`]
+    .concat(categorias.map(c =>
+      `<button class="chip ${filtroCategoria===c?"activo":""}" data-cat="${escapar(c)}">${escapar(c)}</button>`))
+    .join("");
+}
+
+// --- Fichas de resumen --------------------------------------------------------
+function renderizarFichas(){
+  const t = totalesMes(estado.mesVisto);
+  $("#ficha-meta").textContent = t.meta;
+  $("#ficha-completados").textContent = t.real;
+  $("#ficha-restantes").textContent = t.restante;
+  // Media de los % diarios ya transcurridos
+  const [anio, mes] = partirClave(estado.mesVisto);
+  const valores = [];
+  for(let d = 1; d <= diasEnMes(anio, mes); d++){
+    if(esFuturo(anio, mes, d)) continue;
+    const p = pctDia(estado.mesVisto, d);
+    if(p !== null) valores.push(p);
+  }
+  $("#ficha-media").textContent = valores.length
+    ? Math.round(valores.reduce((s,v)=>s+v,0)/valores.length) + "%" : "–";
+}
+
+// --- Cuadrícula principal -------------------------------------------------------
+function renderizarRejilla(){
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  const n = diasEnMes(anio, mes);
+  const semanas = semanasDelMes(anio, mes);
+  const datos = datosMes(clave);
+  const habs = habitosActivos();
+
+  // clase extra de cada columna: inicio de semana y/o columna de hoy
+  const claseCol = d =>
+    (diaSemana(anio, mes, d) === 0 ? "inicio-semana " : "") + (esHoy(anio, mes, d) ? "col-hoy" : "");
+
+  let html = `<table class="tabla-habitos"><thead>`;
+  // Fila 1: agrupación visual por semanas
+  html += `<tr><th class="celda-habito" rowspan="2">Hábito</th>`;
+  semanas.forEach((dias, i) => {
+    html += `<th colspan="${dias.length}" class="inicio-semana" title="Días ${dias[0]}–${dias[dias.length-1]}">Semana ${i+1}</th>`;
+  });
+  html += `<th rowspan="2" title="Real / Meta">✔</th><th rowspan="2">%</th>` +
+          `<th rowspan="2" title="Racha actual">🔥</th><th rowspan="2" title="Racha más larga">🏆</th></tr>`;
+  // Fila 2: días con inicial del día de la semana
+  html += `<tr>`;
+  for(let d = 1; d <= n; d++){
+    html += `<th class="${claseCol(d)}">${LETRAS_DIA[diaSemana(anio, mes, d)]}<br>${d}` +
+            (datos.notas[d] ? `<span class="punto-nota" title="Hay nota">•</span>` : "") + `</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  // Una fila por hábito
+  for(const h of habs){
+    const meta = metaMesHabito(h, anio, mes);
+    const real = realMesHabito(h, clave);
+    const pct = meta ? Math.min(100, Math.round(real / meta * 100)) : null;
+    const r = rachasHabito(h);
+    html += `<tr><td class="celda-habito" title="${escapar(h.nombre)}">${escapar(h.emoji)} ${escapar(h.nombre)}` +
+            `<span class="cat">${escapar(h.categoria || "—")}</span></td>`;
+    for(let d = 1; d <= n; d++){
+      const programado = pesoEsperado(h, anio, mes, d) > 0;
+      const marcado = estaMarcado(clave, h.id, d);
+      html += `<td class="${claseCol(d)}">`;
+      if(!programado){
+        html += `<button class="celda-dia noprog" disabled title="No programado"></button>`;
+      }else{
+        html += `<button class="celda-dia ${marcado?"cumplido":""}" data-accion="marcar" ` +
+                `data-habito="${h.id}" data-dia="${d}" ` +
+                `aria-label="${escapar(h.nombre)}, día ${d}" aria-pressed="${marcado}">` +
+                (marcado ? "✓" : "") + `</button>`;
+      }
+      html += `</td>`;
+    }
+    html += `<td>${real}/${meta}</td><td>${pct===null?"—":pct+"%"}</td>` +
+            `<td>${r.actual} ${r.unidad==="sem"?"sem":"d"}</td><td>${r.mejor} ${r.unidad==="sem"?"sem":"d"}</td></tr>`;
+  }
+
+  // Fila: % del día
+  html += `<tr class="fila-extra"><td class="celda-habito">📈 % del día</td>`;
+  for(let d = 1; d <= n; d++){
+    const p = esFuturo(anio, mes, d) ? null : pctDia(clave, d);
+    html += `<td class="${claseCol(d)}">${p===null?"":p}</td>`;
+  }
+  html += `<td colspan="4"></td></tr>`;
+
+  // Fila: ánimo (clic para pasar de vacío → 😞 … 😄 → vacío)
+  html += `<tr class="fila-extra"><td class="celda-habito">🧠 Ánimo</td>`;
+  for(let d = 1; d <= n; d++){
+    const v = datos.animo[d] || 0;
+    html += `<td class="${claseCol(d)}"><button class="celda-dia" data-accion="animo" data-dia="${d}" ` +
+            `title="Ánimo día ${d}: clic para cambiar">${v ? EMOJIS_ANIMO[v-1] : ""}</button></td>`;
+  }
+  html += `<td colspan="4">${mediaDe(datos.animo, n)}</td></tr>`;
+
+  // Fila: motivación (1 a 5)
+  html += `<tr class="fila-extra"><td class="celda-habito">⚡ Motivación</td>`;
+  for(let d = 1; d <= n; d++){
+    const v = datos.motivacion[d] || 0;
+    html += `<td class="${claseCol(d)}"><button class="celda-dia" data-accion="motivacion" data-dia="${d}" ` +
+            `title="Motivación día ${d}: clic para cambiar">${v || ""}</button></td>`;
+  }
+  html += `<td colspan="4">${mediaDe(datos.motivacion, n)}</td></tr>`;
+
+  // Fila: notas del día
+  html += `<tr class="fila-extra"><td class="celda-habito">📝 Notas</td>`;
+  for(let d = 1; d <= n; d++){
+    html += `<td class="${claseCol(d)}"><button class="celda-dia" data-accion="nota" data-dia="${d}" ` +
+            `title="Nota del día ${d}">${datos.notas[d] ? "📝" : "·"}</button></td>`;
+  }
+  const numNotas = Object.values(datos.notas).filter(Boolean).length;
+  html += `<td colspan="4">${numNotas} nota${numNotas===1?"":"s"}</td></tr>`;
+
+  html += `</tbody></table>`;
+  $("#envoltura-rejilla").innerHTML = html;
+}
+// Media de un registro {dia: valor} sobre el mes (texto listo para mostrar).
+function mediaDe(registro, n){
+  const vals = [];
+  for(let d = 1; d <= n; d++) if(registro[d]) vals.push(registro[d]);
+  return vals.length ? "media " + (vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1) : "";
+}
+
+// --- Tabla de análisis por hábito ------------------------------------------------
+function renderizarAnalisis(){
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  let html = `<table class="tabla-analisis"><thead><tr>` +
+    `<th>Hábito</th><th>Meta</th><th>Real</th><th>Rest.</th><th>Progreso</th><th>%</th><th>🔥</th><th>🏆</th>` +
+    `</tr></thead><tbody>`;
+  for(const h of habitosActivos()){
+    const meta = metaMesHabito(h, anio, mes);
+    const real = realMesHabito(h, clave);
+    const pct = meta ? Math.min(100, Math.round(real / meta * 100)) : 0;
+    const r = rachasHabito(h);
+    html += `<tr><td>${escapar(h.emoji)} ${escapar(h.nombre)}</td>` +
+      `<td>${meta}</td><td>${real}</td><td>${Math.max(0, meta - real)}</td>` +
+      `<td><div class="barra"><span style="width:${pct}%"></span></div></td>` +
+      `<td>${meta ? pct + "%" : "—"}</td>` +
+      `<td>${r.actual}${r.unidad==="sem"?"s":"d"}</td><td>${r.mejor}${r.unidad==="sem"?"s":"d"}</td></tr>`;
+  }
+  html += `</tbody></table>`;
+  $("#envoltura-analisis").innerHTML = html;
+}
+
+// --- Ranking TOP hábitos -----------------------------------------------------------
+function renderizarTop(){
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  const filas = habitosActivos().map(h => {
+    const meta = metaMesHabito(h, anio, mes);
+    const real = realMesHabito(h, clave);
+    return { h, pct: meta ? Math.min(100, Math.round(real / meta * 100)) : 0 };
+  }).sort((a,b) => b.pct - a.pct);
+  const medallas = ["🥇","🥈","🥉"];
+  $("#top-lista").innerHTML = filas.map((f,i) =>
+    `<li><span class="pos">${medallas[i] || (i+1)+"º"}</span>` +
+    `<span class="nom">${escapar(f.h.emoji)} ${escapar(f.h.nombre)}</span>` +
+    `<div class="barra" style="flex:1"><span style="width:${f.pct}%"></span></div>` +
+    `<span class="pct">${f.pct}%</span></li>`).join("") ||
+    `<li class="pista">No hay hábitos en esta categoría.</li>`;
+}
+
+// --- Mapa de calor (estilo GitHub) ---------------------------------------------------
+function renderizarSelectorCalor(){
+  const opciones = [`<option value="global">🌍 Global (todos los hábitos)</option>`]
+    .concat(estado.habitos.map(h =>
+      `<option value="${h.id}" ${seleccionCalor===h.id?"selected":""}>${escapar(h.emoji)} ${escapar(h.nombre)}</option>`));
+  const sel = $("#sel-calor");
+  sel.innerHTML = opciones.join("");
+  sel.value = (seleccionCalor === "global" || estado.habitos.some(h => h.id === seleccionCalor))
+    ? seleccionCalor : "global";
+}
+function renderizarMapaCalor(){
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  const n = diasEnMes(anio, mes);
+  const habito = estado.habitos.find(h => h.id === seleccionCalor);
+  let html = LETRAS_DIA.map(l => `<div class="cab">${l}</div>`).join("");
+  // huecos antes del día 1 para alinear con el día de la semana
+  for(let i = 0; i < diaSemana(anio, mes, 1); i++) html += `<div class="dia vacio"></div>`;
+  for(let d = 1; d <= n; d++){
+    let clase = "", titulo = `Día ${d}`;
+    if(esFuturo(anio, mes, d)){
+      clase = "vacio"; titulo += " (futuro)";
+      html += `<div class="dia ${clase}" style="border:1px dashed var(--linea)" title="${titulo}"></div>`;
+      continue;
+    }
+    if(habito){
+      // Vista por hábito: cumplido / pendiente / no programado
+      if(pesoEsperado(habito, anio, mes, d) <= 0){ clase = "fuera"; titulo += " · no programado"; }
+      else if(estaMarcado(clave, habito.id, d)){ clase = "n3"; titulo += " · cumplido ✓"; }
+      else{ titulo += " · pendiente"; }
+    }else{
+      // Vista global: intensidad según el % de hábitos completados
+      const p = pctDia(clave, d);
+      titulo += p === null ? "" : ` · ${p}%`;
+      if(p !== null && p > 0) clase = p <= 25 ? "n1" : p <= 50 ? "n2" : p <= 75 ? "n3" : "n4";
+    }
+    html += `<div class="dia ${clase}" title="${titulo}"></div>`;
+  }
+  $("#mapa-calor").innerHTML = html;
+}
+
+// --- Reflexiones (semanal y mensual) ---------------------------------------------------
+function renderizarReflexiones(){
+  const seccion = $("#sec-reflexiones");
+  // No re-dibujar mientras el usuario está escribiendo dentro de la sección.
+  if(seccion.contains(document.activeElement)) return;
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  const datos = datosMes(clave);
+  $("#reflexiones-semanales").innerHTML = semanasDelMes(anio, mes).map((dias,i) =>
+    `<div><h3>Semana ${i+1} <span class="pista">(${dias[0]}–${dias[dias.length-1]} ${NOMBRES_MES[mes-1].slice(0,3).toLowerCase()})</span></h3>` +
+    `<textarea data-reflexion-semana="${i}" placeholder="¿Cómo fue esta semana?">${escapar(datos.reflexiones.semanas[i] || "")}</textarea></div>`
+  ).join("");
+  $("#reflexion-mensual").value = datos.reflexiones.mes || "";
+}
+
+// --- Tabla del histórico -------------------------------------------------------------
+function filasHistorico(){
+  return Object.keys(estado.meses).sort().map(clave => {
+    const [anio, mes] = partirClave(clave);
+    let meta = 0, real = 0;
+    for(const h of estado.habitos){        // histórico sin filtro: todos los hábitos
+      meta += metaMesHabito(h, anio, mes);
+      real += realMesHabito(h, clave);
+    }
+    return { clave, etiqueta: `${NOMBRES_MES[mes-1].slice(0,3)} ${anio}`,
+             meta, real, pct: meta ? Math.round(real / meta * 100) : 0 };
+  });
+}
+function renderizarHistorico(){
+  const filas = filasHistorico();
+  $("#envoltura-historico").innerHTML =
+    `<table class="tabla-analisis"><thead><tr><th>Mes</th><th>Meta</th><th>Real</th><th>%</th></tr></thead><tbody>` +
+    filas.map(f => `<tr ${f.clave===estado.mesVisto?'style="font-weight:650"':''}>` +
+      `<td>${f.etiqueta}${f.clave===estado.mesVisto?" ←":""}</td><td>${f.meta}</td><td>${f.real}</td><td>${f.pct}%</td></tr>`).join("") +
+    `</tbody></table>`;
+}
+
+/* ==========================================================================
+   5. GRÁFICOS (Chart.js)
+   Se destruyen y recrean en cada renderizado para que tomen los colores del
+   tema activo (claro u oscuro).
+   ========================================================================== */
+const hayChart = () => typeof window.Chart !== "undefined";
+
+// Lee los colores actuales de las variables CSS (cambian según el tema).
+function coloresTema(){
+  const s = getComputedStyle(document.documentElement);
+  const v = n => s.getPropertyValue(n).trim();
+  return { serie1:v("--serie-1"), serie2:v("--serie-2"), linea:v("--linea"),
+           eje:v("--eje"), suave:v("--tinta-suave"), tinta:v("--tinta"),
+           superficie:v("--superficie") };
+}
+function crearGrafico(id, config){
+  if(!hayChart()) return;
+  if(graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(document.getElementById(id), config);
+}
+// Opciones comunes: rejilla discreta, eje Y en %, sin leyenda por defecto.
+function opcionesBase(c, maxY){
+  return {
+    responsive:true, maintainAspectRatio:false, animation:false,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      x:{ grid:{ display:false }, ticks:{ color:c.suave }, border:{ color:c.eje } },
+      y:{ beginAtZero:true, max:maxY, grid:{ color:c.linea }, border:{ display:false },
+          ticks:{ color:c.suave, callback: v => v + (maxY===100 ? "%" : "") } },
+    },
+  };
+}
+// Texto grande en el centro de la dona (el % del mes).
+const pluginCentroDona = {
+  id:"centroDona",
+  afterDraw(chart){
+    const pct = chart.options.pctCentro;
+    if(pct === undefined) return;
+    const { ctx } = chart;
+    const x = (chart.chartArea.left + chart.chartArea.right) / 2;
+    const y = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+    ctx.save();
+    ctx.fillStyle = coloresTema().tinta;
+    ctx.font = "650 1.7rem system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(pct + "%", x, y - 8);
+    ctx.fillStyle = coloresTema().suave;
+    ctx.font = ".75rem system-ui, sans-serif";
+    ctx.fillText("del mes", x, y + 14);
+    ctx.restore();
+  },
+};
+
+function renderizarGraficos(){
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  const n = diasEnMes(anio, mes);
+  const datos = datosMes(clave);
+
+  // El texto de la correlación se calcula siempre, haya o no gráficos.
+  const xsA=[], ysA=[], xsM=[], ysM=[];
+  const puntosAnimo = [], puntosMotiv = [];
+  for(let d = 1; d <= n; d++){
+    if(esFuturo(anio, mes, d)) continue;
+    const p = pctDia(clave, d);
+    if(p === null) continue;
+    if(datos.animo[d]){ puntosAnimo.push({x:p, y:datos.animo[d]}); xsA.push(p); ysA.push(datos.animo[d]); }
+    if(datos.motivacion[d]){ puntosMotiv.push({x:p, y:datos.motivacion[d]}); xsM.push(p); ysM.push(datos.motivacion[d]); }
+  }
+  $("#texto-correlacion").textContent =
+    `Ánimo ↔ cumplimiento: ${describirCorrelacion(pearson(xsA, ysA))} · ` +
+    `Motivación ↔ cumplimiento: ${describirCorrelacion(pearson(xsM, ysM))}`;
+
+  if(!hayChart()){ document.body.classList.add("sin-chartjs"); return; }
+  document.body.classList.remove("sin-chartjs");
+  const c = coloresTema();
+  const dias = Array.from({length:n}, (_,i) => i+1);
+
+  // --- Progreso diario (barras) ---
+  crearGrafico("gf-diario", {
+    type:"bar",
+    data:{ labels:dias, datasets:[{
+      data: dias.map(d => esFuturo(anio, mes, d) ? null : (pctDia(clave, d) ?? 0)),
+      backgroundColor:c.serie1, maxBarThickness:14,
+      borderRadius:4, borderSkipped:"start",
+    }]},
+    options: opcionesBase(c, 100),
+  });
+
+  // --- Progreso semanal (barras) ---
+  const semanas = semanasDelMes(anio, mes);
+  crearGrafico("gf-semanal", {
+    type:"bar",
+    data:{ labels: semanas.map((_,i) => "S" + (i+1)), datasets:[{
+      data: semanas.map(dias => pctSemana(clave, dias)),
+      backgroundColor:c.serie1, maxBarThickness:34,
+      borderRadius:4, borderSkipped:"start",
+    }]},
+    options: opcionesBase(c, 100),
+  });
+
+  // --- Dona de estadísticas generales ---
+  const t = totalesMes(clave);
+  const pctMes = t.meta ? Math.round(t.real / t.meta * 100) : 0;
+  crearGrafico("gf-dona", {
+    type:"doughnut",
+    data:{ labels:["Completados","Restantes"], datasets:[{
+      data:[t.real, t.restante],
+      backgroundColor:[c.serie1, c.linea],
+      borderColor:c.superficie, borderWidth:2,   // hueco de 2px entre segmentos
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false, cutout:"72%",
+      pctCentro:pctMes,
+      plugins:{ legend:{ position:"bottom", labels:{ color:c.suave, boxWidth:12 } } },
+    },
+    plugins:[pluginCentroDona],
+  });
+
+  // --- Estado mental (líneas de ánimo y motivación) ---
+  const serieDe = registro => dias.map(d => registro[d] || null);
+  crearGrafico("gf-mental", {
+    type:"line",
+    data:{ labels:dias, datasets:[
+      { label:"Ánimo", data:serieDe(datos.animo), borderColor:c.serie1,
+        backgroundColor:c.serie1, borderWidth:2, pointRadius:3, pointHitRadius:10, tension:.3, spanGaps:true },
+      { label:"Motivación", data:serieDe(datos.motivacion), borderColor:c.serie2,
+        backgroundColor:c.serie2, borderWidth:2, pointRadius:3, pointHitRadius:10, tension:.3, spanGaps:true },
+    ]},
+    options:{
+      ...opcionesBase(c, 5),
+      plugins:{ legend:{ display:true, position:"bottom", labels:{ color:c.suave, boxWidth:12 } } },
+      scales:{ x:{ grid:{ display:false }, ticks:{ color:c.suave }, border:{ color:c.eje } },
+               y:{ min:0, max:5, grid:{ color:c.linea }, border:{ display:false },
+                   ticks:{ stepSize:1, color:c.suave } } },
+    },
+  });
+
+  // --- Correlación ánimo/motivación ↔ cumplimiento (dispersión) ---
+  crearGrafico("gf-correlacion", {
+    type:"scatter",
+    data:{ datasets:[
+      { label:"Ánimo", data:puntosAnimo, backgroundColor:c.serie1, pointRadius:4, pointHitRadius:10 },
+      { label:"Motivación", data:puntosMotiv, backgroundColor:c.serie2, pointRadius:4, pointHitRadius:10 },
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{ legend:{ display:true, position:"bottom", labels:{ color:c.suave, boxWidth:12 } } },
+      scales:{
+        x:{ min:0, max:100, title:{ display:true, text:"% de hábitos del día", color:c.suave },
+            grid:{ color:c.linea }, ticks:{ color:c.suave, callback:v=>v+"%" }, border:{ color:c.eje } },
+        y:{ min:0, max:5, title:{ display:true, text:"Nivel (1–5)", color:c.suave },
+            grid:{ color:c.linea }, ticks:{ stepSize:1, color:c.suave }, border:{ display:false } },
+      },
+    },
+  });
+  // --- Histórico mes a mes (barras) ---
+  const filas = filasHistorico();
+  crearGrafico("gf-historico", {
+    type:"bar",
+    data:{ labels: filas.map(f => f.etiqueta), datasets:[{
+      data: filas.map(f => f.pct),
+      backgroundColor:c.serie1, maxBarThickness:40,
+      borderRadius:4, borderSkipped:"start",
+    }]},
+    options: opcionesBase(c, 100),
+  });
+}
+
+// Vuelve a dibujar toda la interfaz (tras cualquier cambio de datos).
+function renderizarTodo(){
+  renderizarSelectorMes();
+  renderizarFiltros();
+  renderizarFichas();
+  renderizarRejilla();
+  renderizarAnalisis();
+  renderizarTop();
+  renderizarSelectorCalor();
+  renderizarMapaCalor();
+  renderizarReflexiones();
+  renderizarHistorico();
+  renderizarGraficos();
+}
+
+/* ==========================================================================
+   6. EXPORTAR / IMPORTAR / IMPRIMIR
+   ========================================================================== */
+function descargarArchivo(nombre, contenido, tipo){
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(new Blob([contenido], { type:tipo }));
+  enlace.download = nombre;
+  enlace.click();
+  URL.revokeObjectURL(enlace.href);
+}
+function fechaHoyTexto(){
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,"0")}-${String(h.getDate()).padStart(2,"0")}`;
+}
+// Exporta TODO el estado como JSON (respaldo completo).
+function exportarJSON(){
+  descargarArchivo(`habitos-respaldo-${fechaHoyTexto()}.json`,
+    JSON.stringify(estado, null, 2), "application/json");
+}
+// Importa un respaldo JSON (reemplaza todos los datos, con confirmación).
+function importarJSON(archivo){
+  const lector = new FileReader();
+  lector.onload = () => {
+    try{
+      const datos = JSON.parse(lector.result);
+      if(!datos || datos.version !== 1 || !Array.isArray(datos.habitos) || typeof datos.meses !== "object")
+        throw new Error("estructura no reconocida");
+      if(!confirm("Esto reemplazará TODOS los datos actuales por los del archivo. ¿Continuar?")) return;
+      estado = datos;
+      guardarEstado();
+      aplicarTema();
+      renderizarTodo();
+      alert("Datos importados correctamente ✅");
+    }catch(e){
+      alert("No se pudo importar: el archivo no parece un respaldo válido de esta aplicación.");
+    }
+  };
+  lector.readAsText(archivo);
+}
+// Exporta la tabla de análisis del mes visto como CSV (abre en Excel/Sheets).
+function exportarCSV(){
+  const clave = estado.mesVisto;
+  const [anio, mes] = partirClave(clave);
+  const q = t => `"${String(t).replace(/"/g,'""')}"`;
+  const filas = [["Hábito","Categoría","Meta","Real","Restante","%","Racha actual","Racha máxima"].map(q).join(",")];
+  for(const h of habitosActivos()){
+    const meta = metaMesHabito(h, anio, mes);
+    const real = realMesHabito(h, clave);
+    const pct = meta ? Math.min(100, Math.round(real / meta * 100)) : "";
+    const r = rachasHabito(h);
+    filas.push([`${h.emoji} ${h.nombre}`, h.categoria || "", meta, real,
+                Math.max(0, meta - real), pct, `${r.actual} ${r.unidad}`, `${r.mejor} ${r.unidad}`].map(q).join(","));
+  }
+  // El BOM (﻿) hace que Excel reconozca bien los acentos y emojis.
+  descargarArchivo(`habitos-analisis-${clave}.csv`, "﻿" + filas.join("\r\n"), "text/csv;charset=utf-8");
+}
+
+/* ==========================================================================
+   7. DIÁLOGOS: nota del día y ajustes de hábitos
+   ========================================================================== */
+let diaNotaAbierta = null;
+function abrirNota(dia){
+  const [anio, mes] = partirClave(estado.mesVisto);
+  diaNotaAbierta = dia;
+  $("#dlg-nota-titulo").textContent = `Nota del ${dia} de ${NOMBRES_MES[mes-1].toLowerCase()} de ${anio}`;
+  $("#dlg-nota-texto").value = datosMes(estado.mesVisto).notas[dia] || "";
+  $("#dlg-nota").showModal();
+}
+
+let habitosEditados = null;   // copia temporal mientras el diálogo está abierto
+function abrirAjustes(){
+  habitosEditados = JSON.parse(JSON.stringify(estado.habitos));
+  renderizarEditorHabitos();
+  $("#dlg-ajustes").showModal();
+}
+function renderizarEditorHabitos(){
+  const cont = $("#editor-habitos");
+  $("#lista-categorias").innerHTML =
+    [...new Set(habitosEditados.map(h => h.categoria).filter(Boolean))]
+    .map(c => `<option value="${escapar(c)}">`).join("");
+  cont.innerHTML = habitosEditados.map((h,i) => {
+    const tipo = h.meta.tipo;
+    let extra = "";
+    if(tipo === "semanal"){
+      extra = `<label>Veces por semana:
+        <input type="number" min="1" max="7" value="${h.meta.veces || 3}" data-idx="${i}" data-campo="veces" style="width:60px"></label>`;
+    }else if(tipo === "dias"){
+      extra = `<span class="dias-meta">` + LETRAS_DIA.map((l,d) =>
+        `<label><input type="checkbox" data-idx="${i}" data-campo="dia" data-dia="${d}"
+          ${(h.meta.dias||[]).includes(d)?"checked":""}>${l}</label>`).join("") + `</span>`;
+    }
+    return `<div class="editor-habito">
+      <input value="${escapar(h.emoji)}" maxlength="8" data-idx="${i}" data-campo="emoji" aria-label="Emoji" style="text-align:center">
+      <input value="${escapar(h.nombre)}" data-idx="${i}" data-campo="nombre" aria-label="Nombre del hábito" placeholder="Nombre del hábito">
+      <input value="${escapar(h.categoria || "")}" data-idx="${i}" data-campo="categoria" list="lista-categorias" aria-label="Categoría" placeholder="Categoría">
+      <div class="fila-meta">
+        <label>Meta:
+          <select data-idx="${i}" data-campo="tipo">
+            <option value="diario" ${tipo==="diario"?"selected":""}>Diario</option>
+            <option value="semanal" ${tipo==="semanal"?"selected":""}>X veces por semana</option>
+            <option value="dias" ${tipo==="dias"?"selected":""}>Días concretos</option>
+          </select>
+        </label>
+        ${extra}
+        <button class="btn-peligro" data-idx="${i}" data-campo="borrar" title="Eliminar este hábito">🗑 Borrar</button>
+      </div>
+    </div>`;
+  }).join("") || `<p class="pista">No hay hábitos: añade el primero 👇</p>`;
+}
+function guardarAjustes(){
+  // Validación mínima: sin nombres vacíos
+  habitosEditados = habitosEditados.filter(h => h.nombre.trim() !== "");
+  for(const h of habitosEditados){
+    if(h.meta.tipo === "semanal") h.meta.veces = Math.min(7, Math.max(1, Number(h.meta.veces) || 3));
+    if(h.meta.tipo === "dias" && !Array.isArray(h.meta.dias)) h.meta.dias = [];
+  }
+  // Limpia las marcas de los hábitos eliminados en todos los meses
+  const idsValidos = new Set(habitosEditados.map(h => h.id));
+  for(const clave of Object.keys(estado.meses)){
+    for(const id of Object.keys(estado.meses[clave].marcas)){
+      if(!idsValidos.has(id)) delete estado.meses[clave].marcas[id];
+    }
+  }
+  estado.habitos = habitosEditados;
+  guardarEstado();
+  $("#dlg-ajustes").close();
+  renderizarTodo();
+}
+
+/* ==========================================================================
+   8. TEMA CLARO / OSCURO
+   ========================================================================== */
+function temaEfectivoOscuro(){
+  if(estado.tema === "oscuro") return true;
+  if(estado.tema === "claro") return false;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function aplicarTema(){
+  if(estado.tema === "auto") delete document.documentElement.dataset.tema;
+  else document.documentElement.dataset.tema = estado.tema;
+  $("#btn-tema").textContent = temaEfectivoOscuro() ? "☀️" : "🌙";
+}
+
+/* ==========================================================================
+   9. EVENTOS E INICIO
+   ========================================================================== */
+function cambiarMes(delta){
+  let [anio, mes] = partirClave(estado.mesVisto);
+  mes += delta;
+  if(mes < 1){ mes = 12; anio--; }
+  if(mes > 12){ mes = 1; anio++; }
+  estado.mesVisto = claveDe(anio, mes);
+  guardarEstado();
+  renderizarTodo();
+}
+
+// -- Selector de mes / año --
+$("#mes-anterior").addEventListener("click", () => cambiarMes(-1));
+$("#mes-siguiente").addEventListener("click", () => cambiarMes(1));
+$("#sel-mes").addEventListener("change", e => {
+  const [anio] = partirClave(estado.mesVisto);
+  estado.mesVisto = claveDe(anio, Number(e.target.value));
+  guardarEstado(); renderizarTodo();
+});
+$("#sel-anio").addEventListener("change", e => {
+  const anio = Math.min(2100, Math.max(2000, Number(e.target.value) || 2026));
+  const [, mes] = partirClave(estado.mesVisto);
+  estado.mesVisto = claveDe(anio, mes);
+  guardarEstado(); renderizarTodo();
+});
+
+// -- Botones de la cabecera --
+$("#btn-tema").addEventListener("click", () => {
+  estado.tema = temaEfectivoOscuro() ? "claro" : "oscuro";
+  guardarEstado(); aplicarTema(); renderizarGraficos();
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if(estado.tema === "auto"){ aplicarTema(); renderizarGraficos(); }
+});
+$("#btn-exportar").addEventListener("click", exportarJSON);
+$("#btn-importar").addEventListener("click", () => $("#entrada-importar").click());
+$("#entrada-importar").addEventListener("change", e => {
+  if(e.target.files[0]) importarJSON(e.target.files[0]);
+  e.target.value = "";
+});
+$("#btn-csv").addEventListener("click", exportarCSV);
+$("#btn-imprimir").addEventListener("click", () => window.print());
+$("#btn-ajustes").addEventListener("click", abrirAjustes);
+
+// -- Filtros de categoría (delegación de eventos) --
+$("#filtros").addEventListener("click", e => {
+  const chip = e.target.closest("[data-cat]");
+  if(!chip) return;
+  filtroCategoria = chip.dataset.cat;
+  renderizarTodo();
+});
+
+// -- Clics dentro de la cuadrícula (marcar, ánimo, motivación, nota) --
+$("#envoltura-rejilla").addEventListener("click", e => {
+  const btn = e.target.closest("[data-accion]");
+  if(!btn) return;
+  const clave = estado.mesVisto;
+  const datos = datosMes(clave);
+  const dia = Number(btn.dataset.dia);
+  const accion = btn.dataset.accion;
+
+  if(accion === "marcar"){
+    const id = btn.dataset.habito;
+    if(!datos.marcas[id]) datos.marcas[id] = {};
+    if(datos.marcas[id][dia]) delete datos.marcas[id][dia];   // desmarcar
+    else datos.marcas[id][dia] = true;                        // marcar
+  }else if(accion === "animo" || accion === "motivacion"){
+    // El clic pasa por: vacío → 1 → 2 → 3 → 4 → 5 → vacío
+    const registro = datos[accion];
+    const v = (registro[dia] || 0) + 1;
+    if(v > 5) delete registro[dia]; else registro[dia] = v;
+  }else if(accion === "nota"){
+    abrirNota(dia);
+    return;   // la nota se guarda desde su diálogo
+  }
+  guardarEstado();
+  renderizarTodo();
+});
+
+// -- Mapa de calor --
+$("#sel-calor").addEventListener("change", e => {
+  seleccionCalor = e.target.value;
+  renderizarMapaCalor();
+});
+
+// -- Reflexiones (autosave con delegación de eventos) --
+$("#reflexiones-semanales").addEventListener("input", e => {
+  const area = e.target.closest("[data-reflexion-semana]");
+  if(!area) return;
+  datosMes(estado.mesVisto).reflexiones.semanas[area.dataset.reflexionSemana] = area.value;
+  guardarEstado();
+});
+$("#reflexion-mensual").addEventListener("input", e => {
+  datosMes(estado.mesVisto).reflexiones.mes = e.target.value;
+  guardarEstado();
+});
+
+// -- Diálogo de nota --
+$("#dlg-nota-guardar").addEventListener("click", () => {
+  const datos = datosMes(estado.mesVisto);
+  const texto = $("#dlg-nota-texto").value.trim();
+  if(texto) datos.notas[diaNotaAbierta] = texto;
+  else delete datos.notas[diaNotaAbierta];
+  guardarEstado();
+  $("#dlg-nota").close();
+  renderizarTodo();
+});
+$("#dlg-nota-cerrar").addEventListener("click", () => $("#dlg-nota").close());
+
+// -- Diálogo de ajustes de hábitos --
+$("#editor-habitos").addEventListener("input", e => {
+  const el = e.target.closest("[data-campo]");
+  if(!el) return;
+  const h = habitosEditados[Number(el.dataset.idx)];
+  const campo = el.dataset.campo;
+  if(campo === "emoji" || campo === "nombre" || campo === "categoria") h[campo] = el.value;
+  else if(campo === "veces") h.meta.veces = Number(el.value);
+});
+$("#editor-habitos").addEventListener("change", e => {
+  const el = e.target.closest("[data-campo]");
+  if(!el) return;
+  const h = habitosEditados[Number(el.dataset.idx)];
+  if(el.dataset.campo === "tipo"){
+    // Al cambiar el tipo de meta se preparan sus valores por defecto
+    if(el.value === "diario") h.meta = { tipo:"diario" };
+    else if(el.value === "semanal") h.meta = { tipo:"semanal", veces: h.meta.veces || 3 };
+    else h.meta = { tipo:"dias", dias: h.meta.dias || [0,1,2,3,4] };
+    renderizarEditorHabitos();
+  }else if(el.dataset.campo === "dia"){
+    const d = Number(el.dataset.dia);
+    const lista = new Set(h.meta.dias || []);
+    if(el.checked) lista.add(d); else lista.delete(d);
+    h.meta.dias = [...lista].sort((a,b)=>a-b);
+  }
+});
+$("#editor-habitos").addEventListener("click", e => {
+  const el = e.target.closest('[data-campo="borrar"]');
+  if(!el) return;
+  const h = habitosEditados[Number(el.dataset.idx)];
+  if(confirm(`¿Borrar "${h.nombre}"? También se borrarán sus marcas de todos los meses.`)){
+    habitosEditados.splice(Number(el.dataset.idx), 1);
+    renderizarEditorHabitos();
+  }
+});
+$("#btn-anadir-habito").addEventListener("click", () => {
+  habitosEditados.push({
+    id: "h" + Date.now().toString(36),   // identificador único sencillo
+    emoji: "✨", nombre: "", categoria: "", meta: { tipo:"diario" },
+  });
+  renderizarEditorHabitos();
+});
+$("#dlg-ajustes-guardar").addEventListener("click", guardarAjustes);
+$("#dlg-ajustes-cerrar").addEventListener("click", () => $("#dlg-ajustes").close());
+
+// -- Arranque --
+if(hayChart()){
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+  Chart.defaults.font.size = 11;
+}else{
+  document.body.classList.add("sin-chartjs");
+}
+datosMes(estado.mesVisto);   // asegura que el mes inicial existe en el almacén
+guardarEstado();
+aplicarTema();
+renderizarTodo();
+</script>
+</body>
+</html>
