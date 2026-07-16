@@ -1,3 +1,8 @@
+> 🧭 Este repositorio contiene dos aplicaciones independientes:
+> **`cronograma.html`** (cronograma semanal, este README) y
+> **`habit-tracker.html`** (rastreador de hábitos — instrucciones en
+> [`README-habit-tracker.md`](README-habit-tracker.md)).
+
 # 🗓️ Cronograma semanal para dos personas
 
 Una aplicación web sencilla para planear y comparar las rutinas semanales de dos
