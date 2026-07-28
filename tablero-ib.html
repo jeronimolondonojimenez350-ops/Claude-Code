@@ -190,6 +190,11 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; }
 
+/* El atributo hidden tiene que ganar siempre. Sin esto, cualquier regla que
+   declare `display` (.btn, .nav-mes…) lo anula en silencio y el elemento
+   sigue en pantalla aunque el código crea haberlo escondido. */
+[hidden] { display: none !important; }
+
 :focus { outline: none; }
 :focus-visible {
   outline: 2px solid var(--color-accent);
@@ -307,6 +312,13 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .entrada:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
 .entrada:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
 select.entrada { cursor: pointer; }
+textarea.entrada { min-height: 56px; resize: vertical; line-height: var(--lh-snug); }
+input[type="file"].entrada { padding: 6px; cursor: pointer; }
+.campo-pista {
+  margin: 5px 0 0; font-size: var(--fs-xs); line-height: var(--lh-snug);
+  color: var(--color-neutral-600);
+}
+.campo-pista.error { color: var(--color-accent-700); font-weight: 600; }
 
 /* Grupo segmentado (Mes / Agenda). */
 .segmentos { display: inline-flex; border: 1px solid var(--color-neutral-400); flex: none; }
@@ -650,6 +662,112 @@ select.entrada { cursor: pointer; }
   color: var(--color-neutral-600);
 }
 
+/* ==========================================================================
+   7 bis. VISTA ARCHIVOS
+   Un centro de recursos agrupado por objetivo. Reutiliza los mismos tokens,
+   la misma rejilla de color por tono y las mismas clases de tipografía que
+   las otras dos vistas: es otra ventana de la misma aplicación.
+   ========================================================================== */
+.archivos { flex: 1; min-height: 0; overflow-y: auto; }
+.archivos-interior { max-width: 1080px; margin: 0 auto; padding: var(--space-4); }
+
+.archivos-barra {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--space-4); flex-wrap: wrap;
+  padding-bottom: var(--space-3); margin-bottom: var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+.archivos-titulo { font-size: var(--fs-xl); margin: 0; }
+.archivos-sub { margin: 4px 0 0; color: var(--color-neutral-600); }
+
+/* Una sección por objetivo, encabezada por su color. */
+.grupo { margin-bottom: var(--space-6); }
+.grupo-cabecera {
+  display: flex; align-items: baseline; gap: var(--space-2);
+  padding-bottom: 6px; margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-neutral-300);
+}
+.grupo-color { width: 11px; height: 11px; flex: none; background: var(--c-fuerte); align-self: center; }
+.grupo-nombre {
+  font-family: var(--font-heading); font-weight: 800;
+  font-size: var(--fs-md); line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight); text-transform: uppercase;
+}
+.grupo-materia {
+  font: 500 var(--fs-micro)/1 var(--font-body);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--color-neutral-600);
+}
+.grupo-cuenta { margin-left: auto; flex: none; }
+.grupo.soltar .grupo-cabecera { border-bottom-color: var(--color-accent); }
+.grupo.soltar .grupo-rejilla { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+
+.grupo-rejilla {
+  display: grid; gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  transition: background var(--dur-rapida) var(--curva);
+}
+
+/* Tarjeta de recurso. */
+.recurso {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: var(--space-3);
+  background: var(--c-tinte);
+  border-left: 3px solid var(--c-fuerte);
+  transition: transform var(--dur-rapida) var(--curva),
+              box-shadow var(--dur-rapida) var(--curva);
+}
+.recurso:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.recurso.arrastrando { opacity: 0.4; }
+
+.recurso-fila { display: flex; align-items: flex-start; gap: var(--space-2); }
+.recurso-abrir {
+  flex: 1; min-width: 0; text-align: left;
+  font-family: var(--font-heading); font-weight: 800;
+  font-size: var(--fs-base); line-height: var(--lh-tight);
+  letter-spacing: var(--track-tight);
+  color: var(--color-text);
+}
+a.recurso-abrir { text-decoration: none; }
+.recurso-abrir:hover { color: var(--color-accent-700); text-decoration: underline; text-underline-offset: 3px; }
+.recurso-acciones { display: flex; gap: 2px; flex: none; }
+.recurso-btn {
+  width: 22px; height: 22px; line-height: 1; flex: none;
+  font-size: var(--fs-xs); color: var(--color-neutral-600);
+  opacity: 0; transition: opacity var(--dur-rapida) var(--curva), color var(--dur-rapida) var(--curva);
+}
+.recurso:hover .recurso-btn,
+.recurso:focus-within .recurso-btn { opacity: 1; }
+.recurso-btn:focus-visible { opacity: 1; }
+.recurso-btn:hover { color: var(--color-accent); }
+
+.recurso-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.recurso-tipo {
+  font: 800 var(--fs-micro)/1 var(--font-body);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-bg); background: var(--c-fuerte);
+  padding: 3px 6px; flex: none;
+}
+/* Un escalón más oscuro que las etiquetas apagadas del resto: aquí el texto va
+   sobre el tinte de color, no sobre el fondo, y ahí el gris 600 se pierde. */
+.recurso-peso { font: 600 var(--fs-micro)/1 var(--font-body); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-neutral-700); }
+.recurso-nota {
+  margin: 0; font-size: var(--fs-sm); line-height: var(--lh-snug);
+  color: var(--color-neutral-800);
+}
+
+/* Estado vacío de un objetivo concreto: invita a añadir, no regaña. */
+.grupo-vacio {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3);
+  border: 1px dashed var(--color-neutral-400);
+  color: var(--color-neutral-600);
+  font-size: var(--fs-sm);
+}
+
 /* Estado vacío, en cualquier vista. */
 .vacio {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -865,6 +983,7 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
     <div class="segmentos" role="group" aria-label="Vista">
       <button id="vista-mes" data-vista="mes" aria-pressed="true">Mes</button>
       <button id="vista-agenda" data-vista="agenda" aria-pressed="false">Agenda</button>
+      <button id="vista-archivos" data-vista="archivos" aria-pressed="false">Archivos</button>
     </div>
 
     <div class="buscador">
@@ -883,7 +1002,7 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
     <aside class="lateral" id="lateral" aria-label="Objetivos del mes">
       <div class="lateral-seccion" id="bloque-progreso">
         <div class="progreso-fila">
-          <span class="t-etiqueta">Mis tareas del mes</span>
+          <span class="t-etiqueta" id="progreso-etiqueta">Mis tareas del mes</span>
           <span class="t-meta" id="progreso-cuenta">0/0</span>
         </div>
         <div class="progreso-pista" role="progressbar" id="progreso-barra"
@@ -904,12 +1023,12 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
       </div>
 
       <div class="lateral-pie">
-        <span class="t-etiqueta">Cómo leer el tablero</span>
-        <div style="display:flex;gap:var(--space-2);align-items:center">
+        <span class="t-etiqueta" id="leyenda-titulo">Cómo leer el tablero</span>
+        <div style="display:flex;gap:var(--space-2);align-items:center" id="leyenda-muestra-fila">
           <span class="leyenda-muestra"></span>
-          <span class="t-cuerpo">Objetivo en su fecha de entrega</span>
+          <span class="t-cuerpo" id="leyenda-muestra-texto">Objetivo en su fecha de entrega</span>
         </div>
-        <p class="t-cuerpo" style="margin:0;color:var(--color-neutral-600)">
+        <p class="t-cuerpo" style="margin:0;color:var(--color-neutral-600)" id="leyenda-texto">
           Clic en el cuadro negro para ver y editar sus tareas. Arrastra una tarea
           a otro día para moverla.
         </p>
@@ -929,6 +1048,20 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
       <!-- Vista Agenda -->
       <section class="agenda" id="panel-agenda" hidden aria-label="Agenda del mes">
         <div class="agenda-interior" id="cuerpo-agenda"></div>
+      </section>
+
+      <!-- Vista Archivos -->
+      <section class="archivos" id="panel-archivos" hidden aria-label="Recursos por objetivo">
+        <div class="archivos-interior">
+          <div class="archivos-barra">
+            <div>
+              <h2 class="t-titular archivos-titulo">Archivos</h2>
+              <p class="t-cuerpo archivos-sub" id="archivos-resumen"></p>
+            </div>
+            <button class="btn btn-primario" id="btn-nuevo-recurso">+ Añadir recurso</button>
+          </div>
+          <div id="cuerpo-archivos"></div>
+        </div>
       </section>
     </main>
   </div>
@@ -1028,6 +1161,56 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
     <div class="dlg-pie" style="border-top:0;padding-top:0">
       <button class="btn btn-primario" type="submit">Guardar objetivo</button>
       <button class="btn btn-secundario" type="button" data-cerrar>Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ══ Diálogo: crear / editar recurso ══════════════════════════════════ -->
+<dialog id="dlg-recurso" aria-labelledby="dlg-recurso-titulo">
+  <form class="dlg" id="form-recurso" method="dialog">
+    <h2 class="dlg-cabecera-simple" id="dlg-recurso-titulo">Nuevo recurso</h2>
+    <div class="dlg-cuerpo">
+      <div class="campo">
+        <label for="fr-titulo">Título</label>
+        <input class="entrada" id="fr-titulo" placeholder="Ej. Borrador de la monografía" autocomplete="off" required>
+      </div>
+
+      <div style="display:flex;gap:var(--space-3);flex-wrap:wrap">
+        <div class="campo" style="flex:1;min-width:170px">
+          <label for="fr-tipo">Tipo</label>
+          <select class="entrada" id="fr-tipo"></select>
+        </div>
+        <div class="campo" style="flex:1;min-width:170px">
+          <label for="fr-objetivo">Objetivo</label>
+          <select class="entrada" id="fr-objetivo"></select>
+        </div>
+      </div>
+
+      <!-- Enlace o archivo, según el tipo. Sólo uno de los dos está a la vista. -->
+      <div class="campo" id="campo-enlace">
+        <label for="fr-url">Enlace</label>
+        <input class="entrada" id="fr-url" type="text" inputmode="url" spellcheck="false"
+               placeholder="https://docs.google.com/…" autocomplete="off">
+        <p class="campo-pista">Se abrirá en una pestaña nueva. Si omites «https://», se añade solo.</p>
+      </div>
+
+      <div class="campo" id="campo-archivo">
+        <label for="fr-archivo">Archivo PDF</label>
+        <input class="entrada" id="fr-archivo" type="file" accept="application/pdf,.pdf">
+        <p class="campo-pista" id="fr-archivo-estado">Máximo 4 MB. Para documentos más pesados, guarda mejor un enlace.</p>
+      </div>
+
+      <div class="campo">
+        <label for="fr-nota">Nota</label>
+        <textarea class="entrada" id="fr-nota" rows="2"
+                  placeholder="¿Para qué sirve este recurso?"></textarea>
+      </div>
+    </div>
+    <div class="dlg-pie" style="border-top:0;padding-top:0">
+      <button class="btn btn-primario" type="submit">Guardar recurso</button>
+      <button class="btn btn-secundario" type="button" data-cerrar>Cancelar</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-fantasma" type="button" id="fr-eliminar" hidden>Eliminar</button>
     </div>
   </form>
 </dialog>
@@ -1147,15 +1330,41 @@ const MIGRACION_OBJETIVOS = {
   'Math AI': 'pi-math', 'CAS': 'cas'
 };
 
+/* --- Recursos -------------------------------------------------------------
+   Un recurso es { id, titulo, tipo, objetivo, nota } más, según el tipo, una
+   `url` o un `archivo` { nombre, mime, tamano }. El contenido del PDF no viaja
+   aquí: pesa demasiado para ir en el mismo registro que las tareas, así que
+   vive aparte (ver ALMACÉN DE PDF). */
+const TIPOS_RECURSO = [
+  { id: 'doc',      etiqueta: 'Google Doc',     enlace: true  },
+  { id: 'sheet',    etiqueta: 'Google Sheet',   enlace: true  },
+  { id: 'articulo', etiqueta: 'Artículo',       enlace: true  },
+  { id: 'pdf',      etiqueta: 'PDF subido',     enlace: false },
+  { id: 'otro',     etiqueta: 'Otro',           enlace: true  }
+];
+const tipoRecurso = (id) => TIPOS_RECURSO.find((t) => t.id === id) || TIPOS_RECURSO[2];
+
+/* >>> PERSONALIZAR <<< Tope por archivo subido. Súbelo con cuidado: el
+   navegador reparte una cuota limitada entre todo lo que guarda esta página. */
+const LIMITE_PDF = 4 * 1024 * 1024;   /* 4 MB */
+
 const ATAJOS = [
   ['←  →',   'Mes anterior / siguiente'],
   ['H',      'Volver al mes de hoy'],
-  ['1  2',   'Cambiar entre Mes y Agenda'],
+  ['1 2 3',  'Cambiar entre Mes, Agenda y Archivos'],
   ['/',      'Buscar'],
   ['N',      'Nuevo objetivo'],
   ['Esc',    'Cerrar la ventana abierta'],
   ['Ctrl+Z', 'Deshacer lo último borrado']
 ];
+
+/* Tamaño legible: 1,4 MB en vez de 1468006. */
+const enPeso = (bytes) => {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
+};
 
 /* ==========================================================================
    2. UTILIDADES
@@ -1222,9 +1431,128 @@ const conTono = (h) => `--tono:${Number(h) || 0}`;
 
 const sigla = (s) => (s || '').trim().toUpperCase().slice(0, 22);
 const idNuevo = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+/* Una URL escrita a mano acaba dentro de un href. Sólo se aceptan http y
+   https: cualquier otro esquema (javascript:, data:…) convertiría un enlace
+   guardado en código que se ejecuta al pulsarlo. Devuelve null si no vale. */
+function urlSegura(texto) {
+  const bruto = String(texto ?? '').trim();
+  if (!bruto) return null;
+  /* "docs.google.com/…" es lo que la gente copia; se asume https. */
+  const candidato = /^[a-z][a-z0-9+.-]*:/i.test(bruto) ? bruto : 'https://' + bruto;
+  let u;
+  try { u = new URL(candidato); } catch { return null; }
+  return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : null;
+}
+
 /* Compara sin acentos ni mayúsculas: buscar "biologia" encuentra "Biología". */
 const normalizar = (s) => String(s ?? '').toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/* ==========================================================================
+   2 bis. ALMACÉN DE PDF
+   Los PDFs se guardan en base64, pero no en el mismo sitio que las tareas.
+   localStorage reparte unos 5 MB para TODO el origen y guarda cadenas en
+   UTF-16, así que un solo PDF de 4 MB (≈5,3 M de caracteres en base64) se
+   comería la cuota entera y se llevaría por delante el tablero.
+
+   Por eso el contenido va a IndexedDB, cuya cuota es mucho mayor, y en el
+   registro de siempre queda sólo la ficha del recurso (unos pocos bytes).
+   Si IndexedDB no está disponible se cae a localStorage, donde el fallo por
+   cuota se informa en lugar de tragarse.
+   ========================================================================== */
+const BD_NOMBRE   = 'tablero-ib-archivos';
+const BD_ALMACEN  = 'pdf';
+const PREFIJO_PDF = 'tablero-ib/pdf/';   /* sólo para el modo de reserva */
+
+let bdPromesa = null;
+
+/* IndexedDB puede no contestar nunca: si otra pestaña tiene la base abierta con
+   una versión distinta, `open` se queda bloqueado sin lanzar ni resolver. Sin
+   un plazo, guardar un archivo esperaría para siempre y la ventana se quedaría
+   colgada sin decir nada — justo el fallo silencioso que hay que evitar. */
+const PLAZO_BD = 3000;
+
+function abrirBD() {
+  if (bdPromesa) return bdPromesa;
+  bdPromesa = new Promise((resolver) => {
+    let resuelto = false;
+    const acabar = (valor) => { if (!resuelto) { resuelto = true; resolver(valor); } };
+    setTimeout(() => acabar(null), PLAZO_BD);
+
+    let peticion;
+    try { peticion = indexedDB.open(BD_NOMBRE, 1); } catch { return acabar(null); }
+    peticion.onupgradeneeded = () => {
+      const bd = peticion.result;
+      if (!bd.objectStoreNames.contains(BD_ALMACEN)) bd.createObjectStore(BD_ALMACEN);
+    };
+    peticion.onsuccess = () => acabar(peticion.result);
+    peticion.onerror   = () => acabar(null);
+    peticion.onblocked = () => acabar(null);
+  }).then((bd) => {
+    /* Un fallo no se cachea: la siguiente operación vuelve a intentarlo en vez
+       de quedarse en el modo de reserva para toda la sesión. */
+    if (!bd) bdPromesa = null;
+    return bd;
+  });
+  return bdPromesa;
+}
+
+/* Envuelve una operación de IndexedDB en una promesa que nunca se rechaza:
+   quien llama decide qué hacer con el fallo, y lo hace siempre igual. */
+function pedirBD(modo, trabajo) {
+  return abrirBD().then((bd) => {
+    if (!bd) return { ok: false, bd: false };
+    return new Promise((resolver) => {
+      let tx;
+      try { tx = bd.transaction(BD_ALMACEN, modo); } catch { return resolver({ ok: false, bd: false }); }
+      let valor, resuelto = false;
+      const acabar = (r) => { if (!resuelto) { resuelto = true; resolver(r); } };
+      setTimeout(() => acabar({ ok: false, bd: true }), PLAZO_BD);
+      const peticion = trabajo(tx.objectStore(BD_ALMACEN));
+      if (peticion) peticion.onsuccess = () => { valor = peticion.result; };
+      tx.oncomplete = () => acabar({ ok: true, bd: true, valor });
+      tx.onerror = tx.onabort = () => acabar({ ok: false, bd: true, error: tx.error });
+    });
+  });
+}
+
+/* Devuelve true si el contenido quedó guardado. Nunca lanza. */
+async function guardarPdf(id, base64) {
+  const r = await pedirBD('readwrite', (almacen) => almacen.put(base64, id));
+  if (r.ok) return true;
+  if (r.bd) return false;            /* IndexedDB existe pero se quedó sin sitio */
+  try { localStorage.setItem(PREFIJO_PDF + id, base64); return true; } catch { return false; }
+}
+
+async function leerPdf(id) {
+  const r = await pedirBD('readonly', (almacen) => almacen.get(id));
+  if (r.bd) return r.ok ? (r.valor ?? null) : null;
+  try { return localStorage.getItem(PREFIJO_PDF + id); } catch { return null; }
+}
+
+async function borrarPdf(id) {
+  const r = await pedirBD('readwrite', (almacen) => almacen.delete(id));
+  if (!r.bd) { try { localStorage.removeItem(PREFIJO_PDF + id); } catch { /* nada */ } }
+}
+
+async function idsPdfGuardados() {
+  const r = await pedirBD('readonly', (almacen) => almacen.getAllKeys());
+  if (r.bd) return r.ok ? (r.valor || []).map(String) : [];
+  try {
+    return Object.keys(localStorage)
+      .filter((k) => k.startsWith(PREFIJO_PDF))
+      .map((k) => k.slice(PREFIJO_PDF.length));
+  } catch { return []; }
+}
+
+/* Al borrar un recurso no se toca su PDF: si la persona pulsa «Deshacer» debe
+   volver entero. Lo que sobra se recoge al arrancar, cuando ya no hay vuelta
+   atrás posible. */
+async function recogerPdfHuérfanos() {
+  const vivos = new Set(Estado.recursos.filter((r) => r.tipo === 'pdf').map((r) => r.id));
+  const guardados = await idsPdfGuardados();
+  for (const id of guardados) if (!vivos.has(id)) await borrarPdf(id);
+}
 
 /* ==========================================================================
    3. ESTADO Y PERSISTENCIA
@@ -1233,6 +1561,7 @@ const normalizar = (s) => String(s ?? '').toLowerCase()
 const Estado = {
   /* Persistente */
   tareas: [],
+  recursos: [],       /* enlaces y PDFs del centro de archivos */
   propios: [],        /* objetivos creados por la persona usuaria */
   ocultos: [],        /* objetivos oficiales que ha decidido quitar */
   tema: 'auto',       /* 'auto' | 'claro' | 'oscuro' */
@@ -1241,6 +1570,7 @@ const Estado = {
   mes: MES_INICIAL,
   vista: 'mes',
   objetivoAbierto: null,
+  recursoAbierto: null,   /* id del recurso que se está editando */
   filtro: null,       /* id de objetivo por el que se está filtrando */
   busqueda: '',
   expandidos: new Set(),   /* días cuya lista de tareas se ha desplegado */
@@ -1255,6 +1585,7 @@ function cargar() {
   }
   if (datos) {
     Estado.tareas  = Array.isArray(datos.tareas)  ? datos.tareas.map(sanearTarea).filter(Boolean) : [];
+    Estado.recursos = Array.isArray(datos.recursos) ? datos.recursos.map(sanearRecurso).filter(Boolean) : [];
     Estado.propios = Array.isArray(datos.propios) ? datos.propios.filter((o) => o && o.id) : [];
     Estado.ocultos = Array.isArray(datos.ocultos) ? datos.ocultos : [];
     Estado.tema    = ['auto', 'claro', 'oscuro'].includes(datos.tema) ? datos.tema : 'auto';
@@ -1267,6 +1598,9 @@ function cargar() {
   const respaldo = objetivos()[0];
   Estado.tareas.forEach((t) => {
     if (!validos.has(t.objetivo) && respaldo) t.objetivo = respaldo.id;
+  });
+  Estado.recursos.forEach((r) => {
+    if (!validos.has(r.objetivo) && respaldo) r.objetivo = respaldo.id;
   });
 }
 
@@ -1305,32 +1639,80 @@ function sanearTarea(t) {
   };
 }
 
+/* Sólo se guarda la ficha del recurso. La URL se normaliza al entrar (ver
+   urlSegura), así que aquí basta con comprobar la forma. */
+function sanearRecurso(r) {
+  if (!r || !r.id || !r.titulo) return null;
+  const tipo = TIPOS_RECURSO.some((t) => t.id === r.tipo) ? r.tipo : 'articulo';
+  const limpio = {
+    id: String(r.id),
+    titulo: String(r.titulo),
+    tipo,
+    objetivo: String(r.objetivo || ''),
+    nota: String(r.nota || '')
+  };
+  if (tipo === 'pdf') {
+    limpio.archivo = {
+      nombre: String((r.archivo && r.archivo.nombre) || 'documento.pdf'),
+      mime: 'application/pdf',
+      tamano: Number((r.archivo && r.archivo.tamano) || 0)
+    };
+  } else {
+    limpio.url = urlSegura(r.url) || '';
+  }
+  return limpio;
+}
+
+/* Instantánea de todo lo persistente, para poder deshacer de una pieza. */
+const instantanea = () => JSON.stringify({
+  t: Estado.tareas, r: Estado.recursos, p: Estado.propios, o: Estado.ocultos
+});
+function restaurarInstantanea(texto) {
+  const prev = JSON.parse(texto);
+  Estado.tareas = prev.t;
+  Estado.recursos = prev.r || [];
+  Estado.propios = prev.p;
+  Estado.ocultos = prev.o;
+}
+
+/* Devuelve true si el registro quedó escrito. Que falle importa: la vista ya
+   muestra el cambio, y sin este aviso la persona creería que está guardado. */
 function guardar() {
   try {
     localStorage.setItem(CLAVE, JSON.stringify({
-      version: 3,
+      version: 4,
       tareas: Estado.tareas,
+      recursos: Estado.recursos,
       propios: Estado.propios,
       ocultos: Estado.ocultos,
       tema: Estado.tema
     }));
-  } catch { /* modo privado o cuota llena: la sesión sigue funcionando */ }
+    return true;
+  } catch {
+    return false;   /* modo privado o cuota llena */
+  }
 }
 
 /* Único punto por el que pasa cualquier cambio persistente. */
 function mutar(fn, aviso) {
-  const antes = JSON.stringify({ t: Estado.tareas, p: Estado.propios, o: Estado.ocultos });
+  const antes = instantanea();
   fn();
-  guardar();
+  if (!guardar()) {
+    /* No se pudo escribir: se vuelve atrás para que la pantalla no muestre
+       algo que en realidad no está guardado. */
+    restaurarInstantanea(antes);
+    render();
+    mostrarAviso('No se pudo guardar: el navegador no tiene espacio. Exporta un respaldo y elimina algún archivo subido.');
+    return false;
+  }
   render();
   if (aviso) {
-    const instantanea = antes;
     mostrarAviso(aviso, () => {
-      const prev = JSON.parse(instantanea);
-      Estado.tareas = prev.t; Estado.propios = prev.p; Estado.ocultos = prev.o;
+      restaurarInstantanea(antes);
       guardar(); render();
     });
   }
+  return true;
 }
 
 /* ==========================================================================
@@ -1349,6 +1731,21 @@ const tareasDe = (id) => Estado.tareas.filter((t) => t.objetivo === id);
 function cuentaDe(id) {
   const ts = tareasDe(id);
   return { total: ts.length, hechas: ts.filter((t) => t.hecha).length };
+}
+
+const recursosDe = (id) => Estado.recursos.filter((r) => r.objetivo === id);
+
+/* Mismo criterio de búsqueda y filtro que en las otras dos vistas. */
+function coincideRecurso(r) {
+  if (Estado.filtro && r.objetivo !== Estado.filtro) return false;
+  if (!Estado.busqueda) return true;
+  const q = normalizar(Estado.busqueda);
+  const o = porId(r.objetivo);
+  return normalizar(r.titulo).includes(q) ||
+         normalizar(r.nota).includes(q) ||
+         normalizar(tipoRecurso(r.tipo).etiqueta).includes(q) ||
+         normalizar(o && o.nombre).includes(q) ||
+         normalizar(o && o.materia).includes(q);
 }
 
 /* Todo lo que cae en un día: hitos oficiales + fechas de objetivos propios. */
@@ -1412,36 +1809,71 @@ function semanasDelMes(mes) {
    Cada región se dibuja por separado y con innerHTML: el marcado dinámico no
    contiene campos de formulario, así que ningún foco se pierde al redibujar.
    ========================================================================== */
+const VISTAS = {
+  mes:      { panel: '#panel-mes',      boton: '#vista-mes',      render: () => renderMes() },
+  agenda:   { panel: '#panel-agenda',   boton: '#vista-agenda',   render: () => renderAgenda() },
+  archivos: { panel: '#panel-archivos', boton: '#vista-archivos', render: () => renderArchivos() }
+};
+
 function render() {
   renderCabecera();
   renderLateral();
-  if (Estado.vista === 'mes') renderMes(); else renderAgenda();
+  VISTAS[Estado.vista].render();
   renderDialogoObjetivo();
 }
 
 function renderCabecera() {
+  const enArchivos = Estado.vista === 'archivos';
+
   $('#titulo-mes').textContent = nombreMes(Estado.mes);
   $('#titulo-impresion').textContent = nombreMes(Estado.mes);
-  document.title = `${nombreMes(Estado.mes)} · Tablero de tareas IB`;
+  document.title = enArchivos
+    ? 'Archivos · Tablero de tareas IB'
+    : `${nombreMes(Estado.mes)} · Tablero de tareas IB`;
   $('#limpiar-busqueda').hidden = !Estado.busqueda;
-  $('#vista-mes').setAttribute('aria-pressed', String(Estado.vista === 'mes'));
-  $('#vista-agenda').setAttribute('aria-pressed', String(Estado.vista === 'agenda'));
-  $('#panel-mes').hidden = Estado.vista !== 'mes';
-  $('#panel-agenda').hidden = Estado.vista !== 'agenda';
+  $('#busqueda').placeholder = enArchivos ? 'Buscar recursos…  (tecla /)' : 'Buscar…  (tecla /)';
+
+  for (const [nombre, v] of Object.entries(VISTAS)) {
+    $(v.boton).setAttribute('aria-pressed', String(Estado.vista === nombre));
+    $(v.panel).hidden = Estado.vista !== nombre;
+  }
+
+  /* Los recursos no cuelgan de un mes: navegar por meses aquí no significa
+     nada, así que el control desaparece en lugar de quedarse sin efecto. */
+  $('.nav-mes').hidden = enArchivos;
   $('#btn-hoy').disabled = Estado.mes === mesDe(hoyISO());
 }
 
 function renderLateral() {
-  /* Progreso: sólo cuenta las tareas del mes que se está mirando. */
-  const delMes = Estado.tareas.filter((t) => mesDe(t.fecha) === Estado.mes);
-  const hechas = delMes.filter((t) => t.hecha).length;
-  const pct = delMes.length ? Math.round((hechas / delMes.length) * 100) : 0;
-  $('#progreso-cuenta').textContent = `${hechas}/${delMes.length}`;
-  $('#progreso-valor').style.width = pct + '%';
-  $('#progreso-barra').setAttribute('aria-valuenow', String(pct));
+  /* El bloque superior habla de lo que se está mirando: tareas del mes en las
+     dos vistas de calendario, recursos guardados en la de archivos. */
+  if (Estado.vista === 'archivos') {
+    $('#progreso-etiqueta').textContent = 'Recursos guardados';
+    $('#progreso-cuenta').textContent = String(Estado.recursos.length);
+    $('#progreso-barra').hidden = true;
+  } else {
+    const delMes = Estado.tareas.filter((t) => mesDe(t.fecha) === Estado.mes);
+    const hechas = delMes.filter((t) => t.hecha).length;
+    const pct = delMes.length ? Math.round((hechas / delMes.length) * 100) : 0;
+    $('#progreso-etiqueta').textContent = 'Mis tareas del mes';
+    $('#progreso-cuenta').textContent = `${hechas}/${delMes.length}`;
+    $('#progreso-barra').hidden = false;
+    $('#progreso-valor').style.width = pct + '%';
+    $('#progreso-barra').setAttribute('aria-valuenow', String(pct));
+  }
+
+  /* La leyenda explica la vista que se está mirando, no siempre el calendario. */
+  const enArchivos = Estado.vista === 'archivos';
+  $('#leyenda-titulo').textContent = enArchivos ? 'Cómo usar los archivos' : 'Cómo leer el tablero';
+  $('#leyenda-muestra-fila').hidden = enArchivos;
+  $('#leyenda-texto').textContent = enArchivos
+    ? 'Cada tarjeta lleva al documento. Arrástrala a otro objetivo para reclasificarla, o edítala para cambiarlo.'
+    : 'Clic en el cuadro negro para ver y editar sus tareas. Arrastra una tarea a otro día para moverla.';
 
   $('#lista-objetivos').innerHTML = objetivos().map((o) => {
-    const c = cuentaDe(o.id);
+    const c = Estado.vista === 'archivos'
+      ? { total: recursosDe(o.id).length, hechas: null }
+      : cuentaDe(o.id);
     const activo = Estado.filtro === o.id;
     return `
       <div class="objetivo tono" data-objetivo="${esc(o.id)}" aria-current="${activo}"
@@ -1453,7 +1885,7 @@ function renderLateral() {
           <span class="objetivo-materia">${esc(o.materia)}</span>
         </button>
         <span class="objetivo-acciones">
-          <span class="t-meta">${c.total ? `${c.hechas}/${c.total}` : '—'}</span>
+          <span class="t-meta">${!c.total ? '—' : (c.hechas === null ? c.total : `${c.hechas}/${c.total}`)}</span>
           <button class="objetivo-btn" data-accion="filtrar" data-id="${esc(o.id)}"
                   aria-label="${activo ? 'Quitar filtro' : 'Filtrar por'} ${esc(o.nombre)}"
                   title="${activo ? 'Quitar filtro' : 'Filtrar por este objetivo'}">${activo ? '◉' : '◎'}</button>
@@ -1615,6 +2047,99 @@ function renderAgenda() {
     </div>`;
 }
 
+/* --- Vista Archivos -------------------------------------------------------
+   Una sección por objetivo, siempre las doce (o las que haya): un objetivo sin
+   recursos enseña su hueco e invita a llenarlo, en vez de desaparecer. */
+function renderArchivos() {
+  const lista = objetivos();
+  const total = Estado.recursos.length;
+  const visibles = Estado.recursos.filter(coincideRecurso).length;
+
+  $('#archivos-resumen').textContent = total === 0
+    ? 'Enlaces a documentos vivos y PDFs sueltos, ordenados por objetivo.'
+    : (Estado.busqueda || Estado.filtro)
+      ? `${visibles} de ${total} recurso${total === 1 ? '' : 's'} coinciden con lo que buscas.`
+      : `${total} recurso${total === 1 ? '' : 's'} en ${lista.length} objetivos.`;
+
+  $('#cuerpo-archivos').innerHTML = lista.map((o) => {
+    /* El filtro por objetivo esconde las demás secciones; la búsqueda sólo
+       vacía las que no tienen nada que coincida. */
+    if (Estado.filtro && o.id !== Estado.filtro) return '';
+    const suyos = recursosDe(o.id);
+    const mostrados = suyos.filter(coincideRecurso);
+
+    return `
+      <section class="grupo tono" data-grupo="${esc(o.id)}" style="${conTono(o.h)}">
+        <div class="grupo-cabecera">
+          <span class="grupo-color"></span>
+          <h3 class="grupo-nombre">${esc(o.nombre)}</h3>
+          <span class="grupo-materia">${esc(o.materia)}</span>
+          <span class="grupo-cuenta t-meta">${suyos.length || '—'}</span>
+        </div>
+        <div class="grupo-rejilla">
+          ${mostrados.length
+            ? mostrados.map(tarjetaRecurso).join('')
+            : bloqueVacio(o, suyos.length > 0)}
+        </div>
+      </section>`;
+  }).join('');
+}
+
+function bloqueVacio(o, hayPeroOcultos) {
+  if (hayPeroOcultos) {
+    return `<p class="grupo-vacio">Ningún recurso de este objetivo coincide con la búsqueda.</p>`;
+  }
+  return `
+    <div class="grupo-vacio">
+      <span>Aún no hay recursos.</span>
+      <button class="btn btn-secundario" data-accion="nuevo-recurso" data-id="${esc(o.id)}">
+        + Añadir el primero
+      </button>
+    </div>`;
+}
+
+function tarjetaRecurso(r) {
+  const tipo = tipoRecurso(r.tipo);
+  const esPdf = r.tipo === 'pdf';
+  const destino = esPdf
+    ? `${esc(r.archivo.nombre)} · ${enPeso(r.archivo.tamano)}`
+    : (r.url ? esc(anfitrion(r.url)) : 'Sin enlace');
+
+  /* El título es un enlace real cuando hay URL: así funcionan el clic central,
+     «abrir en pestaña nueva» y copiar la dirección. El PDF es un botón, porque
+     no hay dirección que copiar hasta que se reconstruye el archivo. */
+  const abridor = esPdf
+    ? `<button class="recurso-abrir" data-accion="abrir-recurso" data-id="${esc(r.id)}">${esc(r.titulo)}</button>`
+    : (r.url
+        ? `<a class="recurso-abrir" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer"
+             draggable="false">${esc(r.titulo)}</a>`
+        : `<span class="recurso-abrir">${esc(r.titulo)}</span>`);
+
+  return `
+    <article class="recurso" draggable="true" data-recurso="${esc(r.id)}">
+      <div class="recurso-fila">
+        ${abridor}
+        <span class="recurso-acciones">
+          <button class="recurso-btn" data-accion="editar-recurso" data-id="${esc(r.id)}"
+                  aria-label="Editar ${esc(r.titulo)}" title="Editar">✎</button>
+          <button class="recurso-btn" data-accion="borrar-recurso" data-id="${esc(r.id)}"
+                  aria-label="Eliminar ${esc(r.titulo)}" title="Eliminar">✕</button>
+        </span>
+      </div>
+      <div class="recurso-meta">
+        <span class="recurso-tipo">${esc(tipo.etiqueta)}</span>
+        <span class="recurso-peso">${destino}</span>
+      </div>
+      ${r.nota ? `<p class="recurso-nota">${esc(r.nota)}</p>` : ''}
+    </article>`;
+}
+
+/* "docs.google.com" a partir de la URL completa: identifica el destino sin
+   ocupar la tarjeta con una dirección de doscientos caracteres. */
+function anfitrion(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+}
+
 /* --- Diálogo de objetivo ------------------------------------------------- */
 function renderDialogoObjetivo() {
   const dlg = $('#dlg-objetivo');
@@ -1675,8 +2200,7 @@ function irA(mes, vista, { historial = true, desliz = 0 } = {}) {
     Estado.vista = nuevaVista;
     Estado.expandidos.clear();
     render();
-    const panel = Estado.vista === 'mes' ? $('#panel-mes') : $('#panel-agenda');
-    panel.scrollTop = 0;
+    $(VISTAS[Estado.vista].panel).scrollTop = 0;
   };
 
   document.documentElement.style.setProperty('--desliz', (desliz < 0 ? 8 : -8) + 'px');
@@ -1703,7 +2227,7 @@ function escribirRuta(hash, modo) {
 }
 
 function leerRuta() {
-  const m = /^#\/(mes|agenda)\/(\d{4}-\d{2})$/.exec(location.hash);
+  const m = /^#\/(mes|agenda|archivos)\/(\d{4}-\d{2})$/.exec(location.hash);
   if (!m) return null;
   return { vista: m[1], mes: m[2] };
 }
@@ -1740,6 +2264,7 @@ function cerrar(dlg) {
 $$('dialog').forEach((dlg) => {
   dlg.addEventListener('close', () => {
     if (dlg.id === 'dlg-objetivo') Estado.objetivoAbierto = null;
+    if (dlg.id === 'dlg-recurso') { Estado.recursoAbierto = null; pdfPendiente = null; }
     render();
     if (focoPrevio && document.contains(focoPrevio)) focoPrevio.focus();
     focoPrevio = null;
@@ -1796,6 +2321,157 @@ function abrirEditorObjetivo(id) {
   $('#form-objetivo').dataset.tono = String(tonoActual);
   pintarPaleta(tonoActual);
   abrir($('#dlg-editar-objetivo'), $('#fo-nombre'));
+}
+
+/* --- Editor de recurso ----------------------------------------------------
+   El archivo elegido se conserva aparte del formulario mientras la ventana
+   está abierta: sólo se escribe al almacén cuando se pulsa Guardar. */
+let pdfPendiente = null;   /* { base64, nombre, mime, tamano } */
+
+function abrirEditorRecurso(id, objetivoSugerido) {
+  const r = id ? Estado.recursos.find((x) => x.id === id) : null;
+  Estado.recursoAbierto = id || null;
+  pdfPendiente = null;
+
+  $('#dlg-recurso-titulo').textContent = r ? 'Editar recurso' : 'Nuevo recurso';
+  $('#fr-titulo').value = r ? r.titulo : '';
+  $('#fr-nota').value = r ? r.nota : '';
+  $('#fr-url').value = r && r.url ? r.url : '';
+  $('#fr-archivo').value = '';
+
+  $('#fr-tipo').innerHTML = TIPOS_RECURSO
+    .map((t) => `<option value="${t.id}"${r && r.tipo === t.id ? ' selected' : ''}>${esc(t.etiqueta)}</option>`)
+    .join('');
+
+  const destino = (r && r.objetivo) || objetivoSugerido || (objetivos()[0] || {}).id;
+  $('#fr-objetivo').innerHTML = objetivos()
+    .map((o) => `<option value="${esc(o.id)}"${o.id === destino ? ' selected' : ''}>${esc(o.nombre)}</option>`)
+    .join('');
+
+  $('#fr-eliminar').hidden = !r;
+  sincronizarTipo(r);
+  abrir($('#dlg-recurso'), $('#fr-titulo'));
+}
+
+/* Enseña el campo que corresponde al tipo elegido y esconde el otro, para que
+   nunca haya dos formas de decir lo mismo a la vista a la vez. */
+function sincronizarTipo(r) {
+  const tipo = tipoRecurso($('#fr-tipo').value);
+  $('#campo-enlace').hidden = !tipo.enlace;
+  $('#campo-archivo').hidden = tipo.enlace;
+  $('#fr-url').required = tipo.enlace;
+
+  const estado = $('#fr-archivo-estado');
+  estado.classList.remove('error');
+  if (pdfPendiente) {
+    estado.textContent = `${pdfPendiente.nombre} · ${enPeso(pdfPendiente.tamano)} · listo para guardar`;
+  } else if (r && r.tipo === 'pdf' && r.archivo) {
+    estado.textContent = `Guardado: ${r.archivo.nombre} · ${enPeso(r.archivo.tamano)}. Elige otro archivo para reemplazarlo.`;
+  } else {
+    estado.textContent = `Máximo ${enPeso(LIMITE_PDF)}. Para documentos más pesados, guarda mejor un enlace.`;
+  }
+}
+
+$('#fr-tipo').addEventListener('change', () => {
+  sincronizarTipo(Estado.recursoAbierto
+    ? Estado.recursos.find((x) => x.id === Estado.recursoAbierto)
+    : null);
+});
+
+/* El archivo se lee y se valida en cuanto se elige, no al enviar: enterarse de
+   que pesa demasiado después de rellenar todo el formulario sería peor. */
+$('#fr-archivo').addEventListener('change', async (ev) => {
+  const archivo = ev.target.files && ev.target.files[0];
+  const estado = $('#fr-archivo-estado');
+  pdfPendiente = null;
+  if (!archivo) { sincronizarTipo(null); return; }
+
+  const fallar = (mensaje) => {
+    ev.target.value = '';
+    estado.classList.add('error');
+    estado.textContent = mensaje;
+  };
+
+  if (archivo.size > LIMITE_PDF) {
+    fallar(`«${archivo.name}» pesa ${enPeso(archivo.size)} y supera el límite de ${enPeso(LIMITE_PDF)}. Guarda mejor un enlace.`);
+    return;
+  }
+  if (archivo.type && archivo.type !== 'application/pdf') {
+    fallar(`«${archivo.name}» no es un PDF. Elige un archivo .pdf o guarda un enlace.`);
+    return;
+  }
+
+  estado.classList.remove('error');
+  estado.textContent = 'Leyendo el archivo…';
+  try {
+    pdfPendiente = {
+      base64: await comoBase64(archivo),
+      nombre: archivo.name,
+      mime: 'application/pdf',
+      tamano: archivo.size
+    };
+  } catch {
+    fallar('No se pudo leer el archivo. Vuelve a elegirlo.');
+    return;
+  }
+  sincronizarTipo(null);
+});
+
+/* Sólo la carga útil, sin el prefijo "data:application/pdf;base64,". */
+function comoBase64(archivo) {
+  return new Promise((resolver, rechazar) => {
+    const lector = new FileReader();
+    lector.onload = () => {
+      const texto = String(lector.result || '');
+      const coma = texto.indexOf(',');
+      resolver(coma >= 0 ? texto.slice(coma + 1) : texto);
+    };
+    lector.onerror = () => rechazar(lector.error);
+    lector.readAsDataURL(archivo);
+  });
+}
+
+/* Reconstruye el PDF guardado y lo abre. Si el navegador bloquea la ventana
+   emergente (pasa dentro de un marco aislado), se descarga: el objetivo es
+   que la persona acabe con el documento delante, por una vía o por otra. */
+async function abrirRecurso(id) {
+  const r = Estado.recursos.find((x) => x.id === id);
+  if (!r) return;
+
+  if (r.tipo !== 'pdf') {
+    const destino = urlSegura(r.url);
+    if (!destino) { mostrarAviso('Este recurso no tiene un enlace válido. Edítalo para corregirlo.'); return; }
+    window.open(destino, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  const base64 = await leerPdf(id);
+  if (!base64) {
+    mostrarAviso(`No se encontró el archivo de «${r.titulo}». Vuelve a subirlo desde Editar.`);
+    return;
+  }
+
+  let url;
+  try {
+    const binario = atob(base64);
+    const bytes = new Uint8Array(binario.length);
+    for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+    url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  } catch {
+    mostrarAviso(`El archivo de «${r.titulo}» está dañado. Vuelve a subirlo desde Editar.`);
+    return;
+  }
+
+  const ventana = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!ventana) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.archivo.nombre || 'documento.pdf';
+    a.click();
+    mostrarAviso(`«${r.archivo.nombre}» se ha descargado.`);
+  }
+  /* El objeto se libera tarde: revocarlo antes cortaría la carga del visor. */
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function pintarPaleta(activo) {
@@ -1871,6 +2547,7 @@ const ACCIONES = {
       if (esPropio(id)) Estado.propios = Estado.propios.filter((x) => x.id !== id);
       else if (!Estado.ocultos.includes(id)) Estado.ocultos.push(id);
       Estado.tareas = Estado.tareas.filter((t) => t.objetivo !== id);
+      Estado.recursos = Estado.recursos.filter((r) => r.objetivo !== id);
       if (Estado.filtro === id) Estado.filtro = null;
       if (Estado.objetivoAbierto === id) cerrar($('#dlg-objetivo'));
     }, `Objetivo «${o.nombre}» quitado del tablero`);
@@ -1881,6 +2558,21 @@ const ACCIONES = {
     if (Estado.expandidos.has(dia)) Estado.expandidos.delete(dia);
     else Estado.expandidos.add(dia);
     renderMes();
+  },
+
+  'nuevo-recurso': (id) => abrirEditorRecurso(null, id),
+
+  'editar-recurso': (id) => abrirEditorRecurso(id),
+
+  'abrir-recurso': (id) => abrirRecurso(id),
+
+  'borrar-recurso': (id) => {
+    const r = Estado.recursos.find((x) => x.id === id);
+    if (!r) return;
+    /* El PDF no se borra aquí: si se deshace, el recurso tiene que volver
+       entero. Lo que quede suelto se recoge en el siguiente arranque. */
+    mutar(() => { Estado.recursos = Estado.recursos.filter((x) => x.id !== id); },
+          `Recurso «${r.titulo}» eliminado`);
   },
 
   'nueva-tarea-dia': (_id, el) => {
@@ -1947,6 +2639,65 @@ $('#ft-eliminar').addEventListener('click', () => {
   ACCIONES['borrar-tarea'](id);
 });
 
+/* Guardar un recurso tiene dos escrituras que pueden fallar por separado: el
+   contenido del PDF y la ficha. Se escribe primero el contenido; si no cabe,
+   no se toca nada más y se dice por qué. */
+$('#form-recurso').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const id = Estado.recursoAbierto;
+  const previo = id ? Estado.recursos.find((x) => x.id === id) : null;
+  const tipo = tipoRecurso($('#fr-tipo').value);
+  const titulo = $('#fr-titulo').value.trim() || 'Recurso sin título';
+  const nota = $('#fr-nota').value.trim();
+  const objetivo = $('#fr-objetivo').value;
+
+  const ficha = { id: id || idNuevo('r'), titulo, tipo: tipo.id, objetivo, nota };
+
+  if (tipo.enlace) {
+    const url = urlSegura($('#fr-url').value);
+    if (!url) {
+      $('#fr-url').focus();
+      mostrarAviso('Escribe una dirección web válida, que empiece por http:// o https://');
+      return;
+    }
+    ficha.url = url;
+  } else {
+    const heredado = previo && previo.tipo === 'pdf' ? previo.archivo : null;
+    if (!pdfPendiente && !heredado) {
+      $('#fr-archivo').focus();
+      mostrarAviso('Elige un archivo PDF, o cambia el tipo para guardar un enlace.');
+      return;
+    }
+    if (pdfPendiente) {
+      const guardado = await guardarPdf(ficha.id, pdfPendiente.base64);
+      if (!guardado) {
+        mostrarAviso(`No hay espacio para guardar «${pdfPendiente.nombre}». Elimina algún archivo subido o guarda un enlace en su lugar.`);
+        return;
+      }
+      ficha.archivo = { nombre: pdfPendiente.nombre, mime: pdfPendiente.mime, tamano: pdfPendiente.tamano };
+    } else {
+      ficha.archivo = heredado;
+    }
+  }
+
+  const ok = mutar(() => {
+    Estado.recursos = id
+      ? Estado.recursos.map((x) => (x.id === id ? ficha : x))
+      : Estado.recursos.concat([ficha]);
+  });
+  if (!ok) return;   /* mutar ya avisó y deshizo el cambio */
+
+  pdfPendiente = null;
+  cerrar($('#dlg-recurso'));
+  if (Estado.vista !== 'archivos') irA(null, 'archivos');
+});
+
+$('#fr-eliminar').addEventListener('click', () => {
+  const id = Estado.recursoAbierto;
+  cerrar($('#dlg-recurso'));
+  if (id) ACCIONES['borrar-recurso'](id);
+});
+
 $('#fo-paleta').addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-tono]');
   if (!b) return;
@@ -1980,6 +2731,8 @@ $('#mes-siguiente').addEventListener('click', () => irA(sumarMeses(Estado.mes, 1
 $('#btn-hoy').addEventListener('click', () => irA(mesDe(hoyISO()), null));
 $('#vista-mes').addEventListener('click', () => irA(null, 'mes'));
 $('#vista-agenda').addEventListener('click', () => irA(null, 'agenda'));
+$('#vista-archivos').addEventListener('click', () => irA(null, 'archivos'));
+$('#btn-nuevo-recurso').addEventListener('click', () => abrirEditorRecurso(null, Estado.filtro));
 $('#btn-nuevo-objetivo').addEventListener('click', () => abrirEditorObjetivo(null));
 
 /* Búsqueda con rebote: no se redibuja el tablero en cada pulsación. */
@@ -2043,10 +2796,21 @@ $('#btn-menu').addEventListener('click', () => {
   abrir($('#dlg-menu'));
 });
 
-$('#btn-exportar').addEventListener('click', () => {
+/* El respaldo se lleva también el contenido de los PDFs: un archivo que sólo
+   guardase las fichas dejaría los documentos atrás sin decirlo. */
+$('#btn-exportar').addEventListener('click', async () => {
+  mostrarAviso('Preparando el respaldo…');
+  const archivos = {};
+  for (const r of Estado.recursos) {
+    if (r.tipo !== 'pdf') continue;
+    const base64 = await leerPdf(r.id);
+    if (base64) archivos[r.id] = base64;
+  }
+
   const datos = {
-    version: 3, exportado: new Date().toISOString(),
-    tareas: Estado.tareas, propios: Estado.propios, ocultos: Estado.ocultos
+    version: 4, exportado: new Date().toISOString(),
+    tareas: Estado.tareas, recursos: Estado.recursos, archivos,
+    propios: Estado.propios, ocultos: Estado.ocultos
   };
   const url = URL.createObjectURL(new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' }));
   const a = document.createElement('a');
@@ -2054,7 +2818,11 @@ $('#btn-exportar').addEventListener('click', () => {
   a.download = `tablero-ib-${hoyISO()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  mostrarAviso('Respaldo descargado');
+
+  const cuantos = Object.keys(archivos).length;
+  mostrarAviso(cuantos
+    ? `Respaldo descargado, con ${cuantos} archivo${cuantos === 1 ? '' : 's'} incluido${cuantos === 1 ? '' : 's'}.`
+    : 'Respaldo descargado');
 });
 
 $('#btn-importar').addEventListener('click', () => $('#archivo-importar').click());
@@ -2065,12 +2833,33 @@ $('#archivo-importar').addEventListener('change', async (ev) => {
   try {
     const datos = JSON.parse(await archivo.text());
     if (!Array.isArray(datos.tareas)) throw new Error('formato');
+
+    const recursos = Array.isArray(datos.recursos)
+      ? datos.recursos.map(sanearRecurso).filter(Boolean) : [];
+
+    /* Los PDFs se escriben antes que las fichas: si alguno no cabe, se importa
+       el resto y se dice cuáles quedaron fuera, en vez de dejar tarjetas que
+       apuntan a un archivo que no existe. */
+    const sinSitio = [];
+    for (const r of recursos) {
+      if (r.tipo !== 'pdf') continue;
+      const base64 = datos.archivos && datos.archivos[r.id];
+      if (!base64) { sinSitio.push(r); continue; }
+      if (!(await guardarPdf(r.id, base64))) sinSitio.push(r);
+    }
+    const perdidos = new Set(sinSitio.map((r) => r.id));
+
     mutar(() => {
       Estado.tareas = datos.tareas.map(sanearTarea).filter(Boolean);
+      Estado.recursos = recursos.filter((r) => !perdidos.has(r.id));
       Estado.propios = Array.isArray(datos.propios) ? datos.propios : [];
       Estado.ocultos = Array.isArray(datos.ocultos) ? datos.ocultos : [];
     }, 'Respaldo importado');
+
     cerrar($('#dlg-menu'));
+    if (perdidos.size) {
+      mostrarAviso(`Se importó todo menos ${perdidos.size} archivo${perdidos.size === 1 ? '' : 's'} subido${perdidos.size === 1 ? '' : 's'}: no cabían en este navegador.`);
+    }
   } catch {
     mostrarAviso('Ese archivo no es un respaldo válido del tablero');
   }
@@ -2081,6 +2870,7 @@ $('#btn-imprimir').addEventListener('click', () => { cerrar($('#dlg-menu')); pri
 $('#btn-restablecer').addEventListener('click', () => {
   mutar(() => {
     Estado.tareas = EJEMPLO.map((t) => ({ ...t }));
+    Estado.recursos = [];
     Estado.propios = [];
     Estado.ocultos = [];
   }, 'Tablero restablecido');
@@ -2088,19 +2878,30 @@ $('#btn-restablecer').addEventListener('click', () => {
 });
 
 /* ==========================================================================
-   14. ARRASTRAR UNA TAREA A OTRO DÍA
-   Atajo de ratón, no la única vía: el mismo cambio se hace desde el diálogo
-   de edición, que sí es accesible con teclado.
+   14. ARRASTRAR
+   Dos gestos con la misma mecánica: una tarea cambia de día en el calendario,
+   una tarjeta de recurso cambia de objetivo en la vista Archivos. Atajo de
+   ratón, nunca la única vía: los dos cambios se hacen también desde el
+   diálogo de edición, que sí funciona con teclado.
    ========================================================================== */
-let arrastrando = null;
+let arrastrando = null;   /* { clase: 'tarea' | 'recurso', id } */
+
+/* Qué se puede arrastrar y sobre qué se puede soltar. */
+const ARRASTRE = {
+  tarea:   { origen: '[data-tarea]',   destino: '[data-dia]',   campo: 'dia'   },
+  recurso: { origen: '[data-recurso]', destino: '[data-grupo]', campo: 'grupo' }
+};
 
 document.addEventListener('dragstart', (ev) => {
-  const fila = ev.target.closest('[data-tarea]');
-  if (!fila) return;
-  arrastrando = fila.dataset.tarea;
-  fila.classList.add('arrastrando');
-  ev.dataTransfer.effectAllowed = 'move';
-  ev.dataTransfer.setData('text/plain', arrastrando);
+  for (const [clase, cfg] of Object.entries(ARRASTRE)) {
+    const el = ev.target.closest(cfg.origen);
+    if (!el) continue;
+    arrastrando = { clase, id: el.dataset[clase] };
+    el.classList.add('arrastrando');
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.dataTransfer.setData('text/plain', arrastrando.id);
+    return;
+  }
 });
 
 document.addEventListener('dragend', () => {
@@ -2109,27 +2910,39 @@ document.addEventListener('dragend', () => {
   $$('.soltar').forEach((el) => el.classList.remove('soltar'));
 });
 
+/* Devuelve la zona de destino válida para lo que se está arrastrando. */
+function zonaDestino(ev) {
+  if (!arrastrando) return null;
+  return ev.target.closest(ARRASTRE[arrastrando.clase].destino);
+}
+
 document.addEventListener('dragover', (ev) => {
-  const dia = ev.target.closest('[data-dia]');
-  if (!arrastrando || !dia) return;
+  const zona = zonaDestino(ev);
+  if (!zona) return;
   ev.preventDefault();
   ev.dataTransfer.dropEffect = 'move';
   $$('.soltar').forEach((el) => el.classList.remove('soltar'));
-  dia.classList.add('soltar');
+  zona.classList.add('soltar');
 });
 
 document.addEventListener('drop', (ev) => {
-  const dia = ev.target.closest('[data-dia]');
-  if (!arrastrando || !dia) return;
+  const zona = zonaDestino(ev);
+  if (!zona) return;
   ev.preventDefault();
-  const id = arrastrando;
-  const destino = dia.dataset.dia;
-  const t = Estado.tareas.find((x) => x.id === id);
-  if (!t || t.fecha === destino) return;
-  const origen = t.fecha;
-  mutar(() => { t.fecha = destino; },
-        `«${t.nombre}» movida al ${fechaLarga(destino)}`);
-  void origen;
+  const { clase, id } = arrastrando;
+  const destino = zona.dataset[ARRASTRE[clase].campo];
+
+  if (clase === 'tarea') {
+    const t = Estado.tareas.find((x) => x.id === id);
+    if (!t || t.fecha === destino) return;
+    mutar(() => { t.fecha = destino; }, `«${t.nombre}» movida al ${fechaLarga(destino)}`);
+    return;
+  }
+
+  const r = Estado.recursos.find((x) => x.id === id);
+  const o = porId(destino);
+  if (!r || !o || r.objetivo === destino) return;
+  mutar(() => { r.objetivo = destino; }, `«${r.titulo}» reclasificado en ${o.nombre}`);
 });
 
 /* ==========================================================================
@@ -2157,6 +2970,7 @@ document.addEventListener('keydown', (ev) => {
     case 'h': case 'H': irA(mesDe(hoyISO()), null); break;
     case '1': irA(null, 'mes'); break;
     case '2': irA(null, 'agenda'); break;
+    case '3': irA(null, 'archivos'); break;
     case 'n': case 'N': ev.preventDefault(); abrirEditorObjetivo(null); break;
     case '/': ev.preventDefault(); $('#busqueda').focus(); $('#busqueda').select(); break;
   }
@@ -2188,6 +3002,10 @@ if (ruta) {
 }
 
 render();
+
+/* Los PDFs que ya no pertenecen a ningún recurso se recogen ahora, cuando la
+   ventana de «Deshacer» de la sesión anterior ya no existe. */
+recogerPdfHuérfanos();
 </script>
 </body>
 </html>

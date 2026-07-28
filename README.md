@@ -29,6 +29,7 @@ Doble clic sobre **`tablero-ib.html`**. Nada más.
 |---|---|
 | **Vista Mes** | El calendario completo: hitos oficiales y tus tareas en el día que les toca. |
 | **Vista Agenda** | Sólo los días con algo anotado, en orden. Cómoda en el móvil. |
+| **Vista Archivos** | Tus enlaces y PDFs agrupados por objetivo. Ver [Archivos](#-archivos-enlaces-y-pdfs-por-objetivo). |
 | **Cambiar de mes** | Flechas ‹ › de la cabecera, o las teclas ← →. El botón **Hoy** vuelve al mes actual. |
 | **Abrir un objetivo** | Clic en el cuadro negro del calendario, o en el objetivo de la barra lateral. |
 | **Añadir una tarea** | Dentro de un objetivo, o con el **+** que aparece al pasar por encima de un día. |
@@ -49,11 +50,47 @@ Doble clic sobre **`tablero-ib.html`**. Nada más.
 |---|---|
 | `←` `→` | Mes anterior / siguiente |
 | `H` | Volver al mes de hoy |
-| `1` `2` | Cambiar entre Mes y Agenda |
+| `1` `2` `3` | Cambiar entre Mes, Agenda y Archivos |
 | `/` | Buscar |
 | `N` | Nuevo objetivo |
 | `Esc` | Cerrar la ventana abierta |
 | `Ctrl+Z` | Deshacer lo último borrado |
+
+### 📎 Archivos: enlaces y PDFs por objetivo
+
+La tercera pestaña es un centro de recursos. Guarda dos cosas distintas:
+
+- **Enlaces** a documentos vivos — Google Doc, Google Sheet, un artículo o
+  cualquier otra dirección. Al pulsar el título se abren en una pestaña nueva.
+  Si escribes `docs.google.com/…` sin el `https://`, se añade solo.
+- **PDFs subidos**, para lo que no vive en la nube. Se guardan dentro de la
+  aplicación y al pulsarlos se abren (o se descargan, si el navegador bloquea
+  la ventana emergente).
+
+Cada recurso lleva un **título**, un **tipo**, el **objetivo** al que pertenece,
+una **nota** que explica para qué sirve, y el **color** de su objetivo. Se
+agrupan en una sección por objetivo; los que aún no tienen nada muestran su
+hueco para que sepas qué te falta. Puedes **arrastrar una tarjeta** a otra
+sección para reclasificarla.
+
+La búsqueda y el filtro de la barra lateral funcionan aquí igual que en las
+otras vistas.
+
+#### Sobre el límite de 4 MB
+
+Cada PDF puede pesar hasta **4 MB**. Por encima de eso se rechaza con un
+mensaje que dice cuánto pesa y cuál es el tope, y te sugiere guardar un enlace
+en su lugar.
+
+El límite no es un capricho: el navegador reparte una cuota limitada entre todo
+lo que guarda esta página. Por eso los PDFs se guardan en **IndexedDB** (cuota
+amplia) mientras que la ficha del recurso —título, tipo, nota— va al mismo
+registro que las tareas, que es pequeño y rápido. Si aun así no cabe, la
+aplicación te lo dice y **no** deja una tarjeta apuntando a un archivo que no
+existe.
+
+Los PDFs viajan dentro del respaldo `.json`, así que al exportar e importar en
+otro equipo llegan también los documentos, no sólo los títulos.
 
 ### 🎨 Personalización (editando el archivo)
 
@@ -64,6 +101,8 @@ Abre `tablero-ib.html` con un editor de texto y busca las marcas
 - `HITOS` — las entregas del calendario, con fecha completa (`AAAA-MM-DD`).
   Añadir otro mes es sólo añadir filas.
 - `FESTIVOS` — los días sin clase.
+- `TIPOS_RECURSO` — los tipos de archivo del centro de recursos.
+- `LIMITE_PDF` — el tope por archivo subido (4 MB). Súbelo con cuidado.
 - Los **tokens de color** y la **escala tipográfica**, al principio del `<style>`.
 
 Cada objetivo aporta un solo dato de color, su **tono** (0-360); los tres
