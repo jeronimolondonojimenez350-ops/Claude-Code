@@ -30,6 +30,7 @@ Doble clic sobre **`tablero-ib.html`**. Nada más.
 | **Vista Mes** | El calendario completo: hitos oficiales y tus tareas en el día que les toca. |
 | **Vista Agenda** | Sólo los días con algo anotado, en orden. Cómoda en el móvil. |
 | **Vista Archivos** | Tus enlaces y PDFs agrupados por objetivo. Ver [Archivos](#-archivos-enlaces-y-pdfs-por-objetivo). |
+| **Vista Copiloto** | Un tutor por objetivo que lee tus fuentes. Ver [Copiloto](#-copiloto-un-tutor-que-lee-tus-fuentes). |
 | **Cambiar de mes** | Flechas ‹ › de la cabecera, o las teclas ← →. El botón **Hoy** vuelve al mes actual. |
 | **Abrir un objetivo** | Clic en el cuadro negro del calendario, o en el objetivo de la barra lateral. |
 | **Añadir una tarea** | Dentro de un objetivo, o con el **+** que aparece al pasar por encima de un día. |
@@ -50,7 +51,7 @@ Doble clic sobre **`tablero-ib.html`**. Nada más.
 |---|---|
 | `←` `→` | Mes anterior / siguiente |
 | `H` | Volver al mes de hoy |
-| `1` `2` `3` | Cambiar entre Mes, Agenda y Archivos |
+| `1` `2` `3` `4` | Cambiar entre Mes, Agenda, Archivos y Copiloto |
 | `/` | Buscar |
 | `N` | Nuevo objetivo |
 | `Esc` | Cerrar la ventana abierta |
@@ -92,6 +93,54 @@ existe.
 Los PDFs viajan dentro del respaldo `.json`, así que al exportar e importar en
 otro equipo llegan también los documentos, no sólo los títulos.
 
+### 🤖 Copiloto: un tutor que lee tus fuentes
+
+La cuarta pestaña es un chat **por objetivo**: cada uno guarda su propia
+conversación, y el tutor sólo ve el material de ese objetivo.
+
+#### Qué se envía en cada mensaje
+
+El panel de la izquierda no es decorativo: es exactamente lo que viaja.
+
+1. **Las fuentes activas** — título, tipo, nota y el contenido que hayas pegado.
+2. **Los PDFs activos**, adjuntos como documentos completos.
+3. **Tus tareas de ese objetivo** (nombre, día, si está hecha) y sus **hitos
+   oficiales** con sus fechas.
+4. **Toda la conversación previa** — la API no recuerda nada entre llamadas, así
+   que el historial se reenvía entero cada vez.
+
+Desmarca una fuente y deja de enviarse. El contador junto a **Fuentes** dice
+cuántas son legibles ahora mismo.
+
+#### Legible y no legible
+
+Cada tarjeta de recurso lleva una marca:
+
+- **LEGIBLE** — tiene contenido pegado, o es un PDF subido. El tutor lo lee.
+- **NO LEGIBLE** — es sólo un enlace. **El tutor no puede abrirlo**: de esa
+  fuente conoce el título, el tipo y tu nota, y nada más.
+
+Por eso el formulario de recurso tiene el campo **«Contenido pegado — el texto
+que la IA podrá leer»**. Si quieres que el tutor comente un Google Doc, pega su
+texto ahí. Si no hay ninguna fuente legible activa, la aplicación te avisa
+**antes** de enviar en lugar de gastar la consulta.
+
+#### Qué hace y qué no hace el tutor
+
+Está instruido para **no redactar texto que puedas entregar como propio** —
+nada de párrafos de tu ensayo, tu monografía o tu PI. Eso sería falta de
+probidad académica y además no te enseñaría nada. Su trabajo es preguntar,
+señalar vacíos y contradicciones, criticar tus borradores con dureza
+constructiva y proponerte los siguientes pasos. También distingue siempre lo
+que sale de tus fuentes de lo que es sugerencia suya.
+
+#### Dónde funciona
+
+La llamada va a `https://api.anthropic.com/v1/messages` **sin clave**: la
+aplicación asume que el entorno donde se abre la gestiona. Donde no sea así, el
+navegador bloquea la petición y el chat lo dice con un mensaje claro en el
+propio hilo — las otras tres vistas siguen funcionando con normalidad.
+
 ### 🎨 Personalización (editando el archivo)
 
 Abre `tablero-ib.html` con un editor de texto y busca las marcas
@@ -103,6 +152,8 @@ Abre `tablero-ib.html` con un editor de texto y busca las marcas
 - `FESTIVOS` — los días sin clase.
 - `TIPOS_RECURSO` — los tipos de archivo del centro de recursos.
 - `LIMITE_PDF` — el tope por archivo subido (4 MB). Súbelo con cuidado.
+- `SISTEMA_TUTOR` — las instrucciones que recibe el tutor en cada consulta.
+- `MODELO_IA` y `MAX_TOKENS_IA` — el modelo y el largo máximo de respuesta.
 - Los **tokens de color** y la **escala tipográfica**, al principio del `<style>`.
 
 Cada objetivo aporta un solo dato de color, su **tono** (0-360); los tres

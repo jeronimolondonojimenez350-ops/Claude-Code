@@ -157,6 +157,11 @@
   --color-neutral-900: #ece8e5;
 
   --color-accent-100: #35100a;
+  /* Los tonos 700/800 del acento son tinta oscura para fondo claro. Sobre el
+     fondo oscuro hay que aclararlos, o el texto en acento queda ilegible
+     (enlaces, botones fantasma, mensajes de error del copiloto). */
+  --color-accent-700: #ff8a70;
+  --color-accent-800: #ffc0b0;
   --color-tarjeta: #0e0d0d;   /* la tarjeta negra sigue siendo negra */
   --casilla-tinta: #14100f;   /* el relleno se aclara: la palomita se oscurece */
 
@@ -313,6 +318,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .entrada:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
 select.entrada { cursor: pointer; }
 textarea.entrada { min-height: 56px; resize: vertical; line-height: var(--lh-snug); }
+textarea.entrada-larga { min-height: 130px; font-size: var(--fs-sm); }
 input[type="file"].entrada { padding: 6px; cursor: pointer; }
 .campo-pista {
   margin: 5px 0 0; font-size: var(--fs-xs); line-height: var(--lh-snug);
@@ -757,6 +763,123 @@ a.recurso-abrir { text-decoration: none; }
   color: var(--color-neutral-800);
 }
 
+/* Marca de legibilidad: dice de un vistazo si la IA puede leer el recurso o si
+   sólo conoce su título. Un enlace sin contenido pegado no es legible. */
+.legible {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font: 700 var(--fs-micro)/1 var(--font-body);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 3px 6px;
+}
+.legible-si { background: var(--color-text); color: var(--color-bg); }
+.legible-no {
+  color: var(--color-neutral-700);
+  box-shadow: inset 0 0 0 1px var(--color-neutral-400);
+}
+
+/* ==========================================================================
+   7 ter. VISTA COPILOTO
+   Un chat por objetivo. La columna de la izquierda declara qué entra en el
+   expediente que se envía; la de la derecha es la conversación.
+   ========================================================================== */
+.copiloto { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.copiloto-barra {
+  flex: none;
+  display: flex; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-divider);
+}
+.copiloto-selector { flex: 1 1 260px; min-width: 0; max-width: 420px; }
+.contador {
+  display: inline-block; min-width: 18px; padding: 1px 5px; margin-left: 2px;
+  background: var(--color-text); color: var(--color-bg);
+  font: 800 var(--fs-micro)/1.4 var(--font-body);
+}
+
+.copiloto-cuerpo { flex: 1; min-height: 0; display: flex; }
+
+/* --- Panel de fuentes ---------------------------------------------------- */
+.fuentes {
+  width: 290px; flex: none;
+  display: flex; flex-direction: column; min-height: 0;
+  border-right: 1px solid var(--color-neutral-300);
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4);
+}
+.fuentes-cabecera {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--space-2); margin-bottom: var(--space-2);
+}
+.fuentes-nota { margin: var(--space-3) 0 0; color: var(--color-neutral-600); }
+
+.fuente {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  width: 100%; text-align: left;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-neutral-200);
+}
+.fuente-texto { flex: 1; min-width: 0; }
+.fuente-titulo { display: block; font-size: var(--fs-sm); font-weight: 600; line-height: var(--lh-snug); }
+.fuente-meta {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 3px;
+}
+.fuente.inactiva .fuente-titulo { opacity: 0.5; }
+.fuente.inactiva .fuente-meta { opacity: 0.5; }
+
+/* --- Chat ---------------------------------------------------------------- */
+.chat { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.chat-hilo {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.chat-interior { max-width: 720px; width: 100%; margin: 0 auto; }
+
+.msg { max-width: 720px; width: 100%; margin: 0 auto; }
+.msg-quien {
+  font: 800 var(--fs-micro)/1 var(--font-body);
+  letter-spacing: var(--track-wide); text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.msg-texto {
+  font-size: var(--fs-base); line-height: var(--lh-normal);
+  white-space: pre-wrap; overflow-wrap: break-word;
+  padding: var(--space-3);
+}
+.msg-usuario .msg-quien { color: var(--color-neutral-600); }
+.msg-usuario .msg-texto { background: var(--color-surface); border-left: 3px solid var(--color-neutral-500); }
+.msg-tutor .msg-quien { color: var(--color-accent-700); }
+.msg-tutor .msg-texto { background: var(--c-tinte, var(--color-neutral-100)); border-left: 3px solid var(--c-fuerte, var(--color-text)); }
+.msg-error .msg-quien { color: var(--color-accent-700); }
+.msg-error .msg-texto {
+  background: var(--color-accent-100); border-left: 3px solid var(--color-accent);
+  color: var(--color-accent-800);
+}
+
+/* Indicador de que la respuesta está en camino. */
+.pensando { display: flex; align-items: center; gap: 8px; }
+.pensando-punto {
+  width: 6px; height: 6px; background: var(--color-neutral-600);
+  animation: latir 1.1s ease-in-out infinite;
+}
+.pensando-punto:nth-child(2) { animation-delay: 0.15s; }
+.pensando-punto:nth-child(3) { animation-delay: 0.3s; }
+@keyframes latir { 0%, 60%, 100% { opacity: 0.25; } 30% { opacity: 1; } }
+
+.chat-redaccion {
+  flex: none;
+  display: flex; align-items: flex-end; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) 0;
+  border-top: 2px solid var(--color-divider);
+}
+.chat-redaccion .entrada { flex: 1; min-width: 0; resize: vertical; }
+.chat-pie {
+  flex: none; margin: 6px 0 0;
+  padding: 0 var(--space-4) var(--space-3);
+  color: var(--color-neutral-600);
+}
+
 /* Estado vacío de un objetivo concreto: invita a añadir, no regaña. */
 .grupo-vacio {
   grid-column: 1 / -1;
@@ -914,6 +1037,15 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
   .marca small { display: none; }
 }
 
+@media (max-width: 900px) {
+  .copiloto-cuerpo { flex-direction: column; }
+  .fuentes {
+    width: auto; max-height: 34vh; flex: none;
+    border-right: 0; border-bottom: 1px solid var(--color-neutral-300);
+  }
+  body:not(.fuentes-abiertas) .fuentes { display: none; }
+}
+
 @media (max-width: 720px) {
   .cabecera { padding: var(--space-2) var(--space-3); }
   .cabecera-relleno { flex-basis: 100%; height: 0; min-width: 0; }
@@ -984,6 +1116,7 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
       <button id="vista-mes" data-vista="mes" aria-pressed="true">Mes</button>
       <button id="vista-agenda" data-vista="agenda" aria-pressed="false">Agenda</button>
       <button id="vista-archivos" data-vista="archivos" aria-pressed="false">Archivos</button>
+      <button id="vista-copiloto" data-vista="copiloto" aria-pressed="false">Copiloto</button>
     </div>
 
     <div class="buscador">
@@ -1061,6 +1194,45 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
             <button class="btn btn-primario" id="btn-nuevo-recurso">+ Añadir recurso</button>
           </div>
           <div id="cuerpo-archivos"></div>
+        </div>
+      </section>
+
+      <!-- Vista Copiloto -->
+      <section class="copiloto" id="panel-copiloto" hidden aria-label="Copiloto de estudio">
+        <div class="copiloto-barra">
+          <div class="campo copiloto-selector">
+            <label for="copiloto-objetivo">Objetivo de la conversación</label>
+            <select class="entrada" id="copiloto-objetivo"></select>
+          </div>
+          <button class="btn btn-secundario" id="btn-fuentes" aria-expanded="false"
+                  aria-controls="panel-fuentes">
+            Fuentes <span class="contador" id="contador-fuentes">0</span>
+          </button>
+          <button class="btn btn-fantasma" id="btn-limpiar-chat">Vaciar conversación</button>
+        </div>
+
+        <div class="copiloto-cuerpo">
+          <!-- Panel de fuentes: qué entra en el expediente que se envía -->
+          <aside class="fuentes" id="panel-fuentes" aria-label="Fuentes activas">
+            <div class="fuentes-cabecera">
+              <span class="t-etiqueta">Fuentes de este objetivo</span>
+              <span class="t-meta" id="fuentes-resumen"></span>
+            </div>
+            <div id="lista-fuentes"></div>
+            <p class="fuentes-nota t-cuerpo" id="fuentes-nota"></p>
+          </aside>
+
+          <div class="chat">
+            <div class="chat-hilo" id="chat-hilo" role="log" aria-live="polite" aria-label="Conversación"></div>
+
+            <form class="chat-redaccion" id="form-chat">
+              <label class="sr" for="chat-mensaje">Escribe tu mensaje</label>
+              <textarea class="entrada" id="chat-mensaje" rows="2"
+                        placeholder="Pregunta, pide crítica de un borrador, o pide los siguientes pasos…"></textarea>
+              <button class="btn btn-primario" id="btn-enviar" type="submit">Enviar</button>
+            </form>
+            <p class="chat-pie t-cuerpo" id="chat-pie"></p>
+          </div>
         </div>
       </section>
     </main>
@@ -1205,6 +1377,13 @@ dialog[open]::backdrop { animation: fundir var(--dur-media) var(--curva); }
         <textarea class="entrada" id="fr-nota" rows="2"
                   placeholder="¿Para qué sirve este recurso?"></textarea>
       </div>
+
+      <div class="campo">
+        <label for="fr-contenido">Contenido pegado — el texto que la IA podrá leer</label>
+        <textarea class="entrada entrada-larga" id="fr-contenido" rows="6"
+                  placeholder="Pega aquí el texto del documento. Un enlace por sí solo no se puede leer: la IA sólo ve lo que pegues."></textarea>
+        <p class="campo-pista" id="fr-contenido-estado"></p>
+      </div>
     </div>
     <div class="dlg-pie" style="border-top:0;padding-top:0">
       <button class="btn btn-primario" type="submit">Guardar recurso</button>
@@ -1348,10 +1527,34 @@ const tipoRecurso = (id) => TIPOS_RECURSO.find((t) => t.id === id) || TIPOS_RECU
    navegador reparte una cuota limitada entre todo lo que guarda esta página. */
 const LIMITE_PDF = 4 * 1024 * 1024;   /* 4 MB */
 
+/* --- Copiloto -------------------------------------------------------------
+   >>> PERSONALIZAR <<< Modelo y tope de respuesta. La clave de la API no se
+   pasa desde aquí: la gestiona el entorno donde se abre la página. */
+const MODELO_IA = 'claude-sonnet-4-6';
+const MAX_TOKENS_IA = 1000;
+const API_MENSAJES = 'https://api.anthropic.com/v1/messages';
+
+/* La API rechaza peticiones de más de 32 MB. Se corta antes, con un mensaje
+   que dice qué desactivar, en lugar de dejar que falle con un 413 opaco. */
+const LIMITE_PETICION = 24 * 1024 * 1024;
+
+/* >>> PERSONALIZAR <<< Instrucciones del tutor. Se envían en cada llamada. */
+const SISTEMA_TUTOR = (objetivo) => `Eres un tutor académico exigente que acompaña a un estudiante de IB Diploma Programme, grado 12, en su proyecto: ${objetivo}. Abajo tienes las fuentes que el estudiante ha reunido y el estado de sus tareas.
+REGLAS:
+1. Distingue siempre lo que proviene de las fuentes de lo que es sugerencia
+   tuya. Si algo no está en las fuentes, dilo explícitamente en vez de
+   suponerlo o inventarlo.
+2. NO redactes texto para que el estudiante lo entregue como propio: nada de
+   párrafos de su ensayo, monografía o IA. Eso sería falta de probidad
+   académica y además le impediría aprender.
+3. Tu trabajo es preguntar, señalar vacíos y contradicciones, criticar sus
+   borradores con dureza constructiva, y proponer siguientes pasos concretos.
+4. Responde en español, de forma directa y concisa.`;
+
 const ATAJOS = [
   ['←  →',   'Mes anterior / siguiente'],
   ['H',      'Volver al mes de hoy'],
-  ['1 2 3',  'Cambiar entre Mes, Agenda y Archivos'],
+  ['1 2 3 4','Cambiar entre Mes, Agenda, Archivos y Copiloto'],
   ['/',      'Buscar'],
   ['N',      'Nuevo objetivo'],
   ['Esc',    'Cerrar la ventana abierta'],
@@ -1562,6 +1765,8 @@ const Estado = {
   /* Persistente */
   tareas: [],
   recursos: [],       /* enlaces y PDFs del centro de archivos */
+  conversaciones: {}, /* { idObjetivo: [ { rol, texto } ] } */
+  inactivas: [],      /* ids de recursos desactivados en el copiloto */
   propios: [],        /* objetivos creados por la persona usuaria */
   ocultos: [],        /* objetivos oficiales que ha decidido quitar */
   tema: 'auto',       /* 'auto' | 'claro' | 'oscuro' */
@@ -1571,6 +1776,8 @@ const Estado = {
   vista: 'mes',
   objetivoAbierto: null,
   recursoAbierto: null,   /* id del recurso que se está editando */
+  copiloto: null,         /* objetivo de la conversación abierta */
+  enviando: false,        /* hay una respuesta en camino */
   filtro: null,       /* id de objetivo por el que se está filtrando */
   busqueda: '',
   expandidos: new Set(),   /* días cuya lista de tareas se ha desplegado */
@@ -1586,6 +1793,8 @@ function cargar() {
   if (datos) {
     Estado.tareas  = Array.isArray(datos.tareas)  ? datos.tareas.map(sanearTarea).filter(Boolean) : [];
     Estado.recursos = Array.isArray(datos.recursos) ? datos.recursos.map(sanearRecurso).filter(Boolean) : [];
+    Estado.conversaciones = sanearConversaciones(datos.conversaciones);
+    Estado.inactivas = Array.isArray(datos.inactivas) ? datos.inactivas.map(String) : [];
     Estado.propios = Array.isArray(datos.propios) ? datos.propios.filter((o) => o && o.id) : [];
     Estado.ocultos = Array.isArray(datos.ocultos) ? datos.ocultos : [];
     Estado.tema    = ['auto', 'claro', 'oscuro'].includes(datos.tema) ? datos.tema : 'auto';
@@ -1649,7 +1858,10 @@ function sanearRecurso(r) {
     titulo: String(r.titulo),
     tipo,
     objetivo: String(r.objetivo || ''),
-    nota: String(r.nota || '')
+    nota: String(r.nota || ''),
+    /* Texto pegado a mano. Es lo único que la IA puede leer de un enlace: no
+       navega, así que una URL sin contenido es un título y poco más. */
+    contenido: String(r.contenido || '')
   };
   if (tipo === 'pdf') {
     limpio.archivo = {
@@ -1663,7 +1875,24 @@ function sanearRecurso(r) {
   return limpio;
 }
 
-/* Instantánea de todo lo persistente, para poder deshacer de una pieza. */
+/* Los mensajes llegan de localStorage, así que se comprueban igual que todo
+   lo demás antes de volver a la pantalla o a la API. */
+function sanearConversaciones(bruto) {
+  if (!bruto || typeof bruto !== 'object') return {};
+  const limpio = {};
+  for (const [id, hilo] of Object.entries(bruto)) {
+    if (!Array.isArray(hilo)) continue;
+    const mensajes = hilo
+      .filter((m) => m && typeof m.texto === 'string' && (m.rol === 'usuario' || m.rol === 'tutor'))
+      .map((m) => ({ rol: m.rol, texto: String(m.texto) }));
+    if (mensajes.length) limpio[String(id)] = mensajes;
+  }
+  return limpio;
+}
+
+/* Instantánea de lo que «Deshacer» debe poder revertir. Las conversaciones y
+   las fuentes desactivadas quedan fuera a propósito: deshacer el borrado de
+   una tarea no debe llevarse por delante los mensajes escritos después. */
 const instantanea = () => JSON.stringify({
   t: Estado.tareas, r: Estado.recursos, p: Estado.propios, o: Estado.ocultos
 });
@@ -1680,9 +1909,11 @@ function restaurarInstantanea(texto) {
 function guardar() {
   try {
     localStorage.setItem(CLAVE, JSON.stringify({
-      version: 4,
+      version: 5,
       tareas: Estado.tareas,
       recursos: Estado.recursos,
+      conversaciones: Estado.conversaciones,
+      inactivas: Estado.inactivas,
       propios: Estado.propios,
       ocultos: Estado.ocultos,
       tema: Estado.tema
@@ -1734,6 +1965,19 @@ function cuentaDe(id) {
 }
 
 const recursosDe = (id) => Estado.recursos.filter((r) => r.objetivo === id);
+
+/* --- Copiloto: qué puede leer la IA ---------------------------------------
+   Un recurso es LEGIBLE si trae texto pegado o si es un PDF subido (que viaja
+   como documento). Un enlace sin contenido pegado no lo es: la IA no navega,
+   así que de él sólo conoce el título, el tipo y la nota. */
+const esLegible = (r) => !!(r.contenido && r.contenido.trim()) || r.tipo === 'pdf';
+
+/* Activo salvo que se haya desmarcado. Así un recurso nuevo entra solo. */
+const estaActiva = (id) => !Estado.inactivas.includes(id);
+const fuentesDe = (idObjetivo) => recursosDe(idObjetivo).filter((r) => estaActiva(r.id));
+const fuentesLegiblesDe = (idObjetivo) => fuentesDe(idObjetivo).filter(esLegible);
+
+const hiloDe = (idObjetivo) => Estado.conversaciones[idObjetivo] || [];
 
 /* Mismo criterio de búsqueda y filtro que en las otras dos vistas. */
 function coincideRecurso(r) {
@@ -1812,7 +2056,8 @@ function semanasDelMes(mes) {
 const VISTAS = {
   mes:      { panel: '#panel-mes',      boton: '#vista-mes',      render: () => renderMes() },
   agenda:   { panel: '#panel-agenda',   boton: '#vista-agenda',   render: () => renderAgenda() },
-  archivos: { panel: '#panel-archivos', boton: '#vista-archivos', render: () => renderArchivos() }
+  archivos: { panel: '#panel-archivos', boton: '#vista-archivos', render: () => renderArchivos() },
+  copiloto: { panel: '#panel-copiloto', boton: '#vista-copiloto', render: () => renderCopiloto() }
 };
 
 function render() {
@@ -1824,30 +2069,39 @@ function render() {
 
 function renderCabecera() {
   const enArchivos = Estado.vista === 'archivos';
+  const enCopiloto = Estado.vista === 'copiloto';
+  const sinMes = enArchivos || enCopiloto;
 
   $('#titulo-mes').textContent = nombreMes(Estado.mes);
   $('#titulo-impresion').textContent = nombreMes(Estado.mes);
-  document.title = enArchivos
-    ? 'Archivos · Tablero de tareas IB'
+  document.title = sinMes
+    ? `${enCopiloto ? 'Copiloto' : 'Archivos'} · Tablero de tareas IB`
     : `${nombreMes(Estado.mes)} · Tablero de tareas IB`;
   $('#limpiar-busqueda').hidden = !Estado.busqueda;
   $('#busqueda').placeholder = enArchivos ? 'Buscar recursos…  (tecla /)' : 'Buscar…  (tecla /)';
+  /* El buscador filtra tareas y recursos; en el chat no tiene nada que filtrar. */
+  $('.buscador').hidden = enCopiloto;
 
   for (const [nombre, v] of Object.entries(VISTAS)) {
     $(v.boton).setAttribute('aria-pressed', String(Estado.vista === nombre));
     $(v.panel).hidden = Estado.vista !== nombre;
   }
 
-  /* Los recursos no cuelgan de un mes: navegar por meses aquí no significa
-     nada, así que el control desaparece en lugar de quedarse sin efecto. */
-  $('.nav-mes').hidden = enArchivos;
+  /* Ni los recursos ni el chat cuelgan de un mes: navegar por meses aquí no
+     significa nada, así que el control desaparece en lugar de no hacer nada. */
+  $('.nav-mes').hidden = sinMes;
   $('#btn-hoy').disabled = Estado.mes === mesDe(hoyISO());
 }
 
 function renderLateral() {
   /* El bloque superior habla de lo que se está mirando: tareas del mes en las
      dos vistas de calendario, recursos guardados en la de archivos. */
-  if (Estado.vista === 'archivos') {
+  if (Estado.vista === 'copiloto') {
+    const legibles = Estado.recursos.filter(esLegible).length;
+    $('#progreso-etiqueta').textContent = 'Fuentes legibles';
+    $('#progreso-cuenta').textContent = `${legibles}/${Estado.recursos.length}`;
+    $('#progreso-barra').hidden = true;
+  } else if (Estado.vista === 'archivos') {
     $('#progreso-etiqueta').textContent = 'Recursos guardados';
     $('#progreso-cuenta').textContent = String(Estado.recursos.length);
     $('#progreso-barra').hidden = true;
@@ -1863,15 +2117,22 @@ function renderLateral() {
   }
 
   /* La leyenda explica la vista que se está mirando, no siempre el calendario. */
-  const enArchivos = Estado.vista === 'archivos';
-  $('#leyenda-titulo').textContent = enArchivos ? 'Cómo usar los archivos' : 'Cómo leer el tablero';
-  $('#leyenda-muestra-fila').hidden = enArchivos;
-  $('#leyenda-texto').textContent = enArchivos
-    ? 'Cada tarjeta lleva al documento. Arrástrala a otro objetivo para reclasificarla, o edítala para cambiarlo.'
-    : 'Clic en el cuadro negro para ver y editar sus tareas. Arrastra una tarea a otro día para moverla.';
+  const vista = Estado.vista;
+  const LEYENDAS = {
+    archivos: ['Cómo usar los archivos',
+      'Cada tarjeta lleva al documento. Arrástrala a otro objetivo para reclasificarla, o edítala para cambiarlo.'],
+    copiloto: ['Cómo funciona el copiloto',
+      'El tutor sólo lee el contenido que hayas pegado y los PDFs subidos. Un enlace suelto no lo puede abrir.'],
+    mes: ['Cómo leer el tablero',
+      'Clic en el cuadro negro para ver y editar sus tareas. Arrastra una tarea a otro día para moverla.']
+  };
+  const [titulo, texto] = LEYENDAS[vista] || LEYENDAS.mes;
+  $('#leyenda-titulo').textContent = titulo;
+  $('#leyenda-muestra-fila').hidden = vista !== 'mes' && vista !== 'agenda';
+  $('#leyenda-texto').textContent = texto;
 
   $('#lista-objetivos').innerHTML = objetivos().map((o) => {
-    const c = Estado.vista === 'archivos'
+    const c = (Estado.vista === 'archivos' || Estado.vista === 'copiloto')
       ? { total: recursosDe(o.id).length, hechas: null }
       : cuentaDe(o.id);
     const activo = Estado.filtro === o.id;
@@ -2128,10 +2389,120 @@ function tarjetaRecurso(r) {
       </div>
       <div class="recurso-meta">
         <span class="recurso-tipo">${esc(tipo.etiqueta)}</span>
+        ${marcaLegible(r)}
         <span class="recurso-peso">${destino}</span>
       </div>
       ${r.nota ? `<p class="recurso-nota">${esc(r.nota)}</p>` : ''}
     </article>`;
+}
+
+/* Marca visible de si la IA puede leer el recurso, con el porqué en el title. */
+function marcaLegible(r) {
+  if (r.tipo === 'pdf') {
+    return `<span class="legible legible-si" title="PDF subido: viaja entero al copiloto.">Legible</span>`;
+  }
+  if (r.contenido && r.contenido.trim()) {
+    return `<span class="legible legible-si" title="Tiene contenido pegado: ${enPeso(r.contenido.length)} de texto.">Legible</span>`;
+  }
+  return `<span class="legible legible-no" title="Sólo enlace. Pega el contenido para que el copiloto pueda leerlo.">No legible</span>`;
+}
+
+/* --- Vista Copiloto -------------------------------------------------------
+   Un hilo por objetivo. Lo que se ve a la izquierda es exactamente lo que se
+   envía: si una fuente está desmarcada, no entra en el expediente. */
+function renderCopiloto() {
+  const lista = objetivos();
+  if (!lista.length) return;
+  if (!Estado.copiloto || !porId(Estado.copiloto)) {
+    Estado.copiloto = (Estado.filtro && porId(Estado.filtro) ? Estado.filtro : lista[0].id);
+  }
+  const o = porId(Estado.copiloto);
+
+  $('#copiloto-objetivo').innerHTML = lista
+    .map((x) => `<option value="${esc(x.id)}"${x.id === o.id ? ' selected' : ''}>${esc(x.nombre)}</option>`)
+    .join('');
+  $('#panel-copiloto').style.setProperty('--tono', String(o.h));
+  $('#panel-copiloto').classList.add('tono');
+
+  renderFuentes(o);
+  renderHilo(o);
+}
+
+function renderFuentes(o) {
+  const suyos = recursosDe(o.id);
+  const activas = fuentesDe(o.id);
+  const legibles = fuentesLegiblesDe(o.id);
+
+  $('#contador-fuentes').textContent = String(legibles.length);
+  $('#fuentes-resumen').textContent = suyos.length
+    ? `${activas.length}/${suyos.length} activas`
+    : '—';
+
+  $('#lista-fuentes').innerHTML = suyos.length ? suyos.map((r) => {
+    const activa = estaActiva(r.id);
+    const tipo = tipoRecurso(r.tipo);
+    return `
+      <label class="fuente${activa ? '' : ' inactiva'}">
+        <input type="checkbox" class="casilla-fuente" data-fuente="${esc(r.id)}"
+               ${activa ? 'checked' : ''}>
+        <span class="fuente-texto">
+          <span class="fuente-titulo">${esc(r.titulo)}</span>
+          <span class="fuente-meta">
+            <span class="t-meta">${esc(tipo.etiqueta)}</span>
+            ${marcaLegible(r)}
+          </span>
+        </span>
+      </label>`;
+  }).join('') : `
+    <p class="t-cuerpo" style="margin:0;color:var(--color-neutral-600)">
+      Este objetivo aún no tiene recursos. Añádelos en la pestaña Archivos.
+    </p>`;
+
+  /* Se dice qué se envía y qué no, en lugar de dejarlo a la intuición. */
+  const soloEnlaces = activas.length - legibles.length;
+  $('#fuentes-nota').textContent = !suyos.length
+    ? ''
+    : legibles.length === 0
+      ? 'Ninguna fuente activa es legible. El tutor sólo vería los títulos, así que no podrá comentar tu material.'
+      : `Se envían ${legibles.length} fuente${legibles.length === 1 ? '' : 's'} legible${legibles.length === 1 ? '' : 's'}` +
+        (soloEnlaces ? `; ${soloEnlaces} activa${soloEnlaces === 1 ? '' : 's'} sólo aporta${soloEnlaces === 1 ? '' : 'n'} su título.` : '.');
+}
+
+function renderHilo(o) {
+  const hilo = hiloDe(o.id);
+  const caja = $('#chat-hilo');
+
+  caja.innerHTML = hilo.length ? hilo.map((m) => `
+    <article class="msg msg-${m.rol === 'usuario' ? 'usuario' : (m.rol === 'error' ? 'error' : 'tutor')}">
+      <div class="msg-quien">${m.rol === 'usuario' ? 'Tú' : (m.rol === 'error' ? 'No se pudo enviar' : 'Tutor')}</div>
+      <div class="msg-texto">${esc(m.texto)}</div>
+    </article>`).join('') : `
+    <div class="vacio">
+      <p><strong>${esc(o.nombre)}</strong></p>
+      <p>El tutor lee las fuentes que tengas activas, tus tareas de este objetivo y
+         sus hitos oficiales. Pídele que critique un borrador, que señale lo que
+         te falta, o que te proponga los siguientes pasos.</p>
+    </div>`;
+
+  if (Estado.enviando) {
+    caja.insertAdjacentHTML('beforeend', `
+      <article class="msg msg-tutor">
+        <div class="msg-quien">Tutor</div>
+        <div class="msg-texto pensando" aria-label="Escribiendo respuesta">
+          <span class="pensando-punto"></span><span class="pensando-punto"></span><span class="pensando-punto"></span>
+        </div>
+      </article>`);
+  }
+  caja.scrollTop = caja.scrollHeight;
+
+  $('#btn-enviar').disabled = Estado.enviando;
+  $('#chat-mensaje').disabled = Estado.enviando;
+  $('#btn-limpiar-chat').hidden = hilo.length === 0;
+
+  const c = cuentaDe(o.id);
+  $('#chat-pie').textContent = Estado.enviando
+    ? 'Consultando al tutor…'
+    : `El expediente incluye ${c.total} tarea${c.total === 1 ? '' : 's'} de este objetivo y ${hitosDe(o.id).length} hito${hitosDe(o.id).length === 1 ? '' : 's'} oficial${hitosDe(o.id).length === 1 ? '' : 'es'}.`;
 }
 
 /* "docs.google.com" a partir de la URL completa: identifica el destino sin
@@ -2227,7 +2598,7 @@ function escribirRuta(hash, modo) {
 }
 
 function leerRuta() {
-  const m = /^#\/(mes|agenda|archivos)\/(\d{4}-\d{2})$/.exec(location.hash);
+  const m = /^#\/(mes|agenda|archivos|copiloto)\/(\d{4}-\d{2})$/.exec(location.hash);
   if (!m) return null;
   return { vista: m[1], mes: m[2] };
 }
@@ -2336,6 +2707,8 @@ function abrirEditorRecurso(id, objetivoSugerido) {
   $('#dlg-recurso-titulo').textContent = r ? 'Editar recurso' : 'Nuevo recurso';
   $('#fr-titulo').value = r ? r.titulo : '';
   $('#fr-nota').value = r ? r.nota : '';
+  $('#fr-contenido').value = r ? (r.contenido || '') : '';
+  actualizarPistaContenido();
   $('#fr-url').value = r && r.url ? r.url : '';
   $('#fr-archivo').value = '';
 
@@ -2372,7 +2745,20 @@ function sincronizarTipo(r) {
   }
 }
 
+/* Dice si lo pegado ya hace legible el recurso, mientras se escribe. */
+function actualizarPistaContenido() {
+  const largo = $('#fr-contenido').value.trim().length;
+  const esPdf = tipoRecurso($('#fr-tipo').value).id === 'pdf';
+  $('#fr-contenido-estado').textContent = largo
+    ? `${enPeso(largo)} de texto. El copiloto podrá leerlo.`
+    : (esPdf
+        ? 'Opcional en un PDF: el archivo ya viaja entero al copiloto.'
+        : 'Sin esto, el copiloto sólo conocerá el título y la nota — no puede abrir el enlace.');
+}
+$('#fr-contenido').addEventListener('input', actualizarPistaContenido);
+
 $('#fr-tipo').addEventListener('change', () => {
+  actualizarPistaContenido();
   sincronizarTipo(Estado.recursoAbierto
     ? Estado.recursos.find((x) => x.id === Estado.recursoAbierto)
     : null);
@@ -2481,6 +2867,157 @@ function pintarPaleta(activo) {
 }
 
 /* ==========================================================================
+   7 ter. EL EXPEDIENTE Y LA LLAMADA AL TUTOR
+   La API no recuerda nada entre llamadas: cada mensaje reenvía el expediente
+   completo y todo el historial previo. Lo que se arma aquí es exactamente lo
+   que el panel de fuentes muestra — no hay contexto oculto.
+   ========================================================================== */
+
+/* (a) y (c): fuentes activas y estado de las tareas, en texto. Los PDFs no
+   caben aquí — viajan como bloques `document` (ver expedienteDocumentos). */
+function expedienteTexto(o) {
+  const partes = [];
+
+  const activas = fuentesDe(o.id);
+  if (activas.length) {
+    partes.push('=== FUENTES REUNIDAS POR EL ESTUDIANTE ===');
+    activas.forEach((r, i) => {
+      const t = tipoRecurso(r.tipo).etiqueta;
+      const cabecera = `--- Fuente ${i + 1}: «${r.titulo}» (${t}) ---`;
+      const nota = r.nota ? `Para qué sirve, según el estudiante: ${r.nota}` : '';
+      let cuerpo;
+      if (r.contenido && r.contenido.trim()) {
+        cuerpo = `Contenido:\n${r.contenido.trim()}`;
+      } else if (r.tipo === 'pdf') {
+        cuerpo = `El PDF «${r.archivo.nombre}» se adjunta como documento en este mismo mensaje.`;
+      } else {
+        cuerpo = 'SIN CONTENIDO: de esta fuente sólo se conoce el título. No supongas qué dice.';
+      }
+      partes.push([cabecera, nota, cuerpo].filter(Boolean).join('\n'));
+    });
+  } else {
+    partes.push('=== FUENTES ===\nEl estudiante no ha activado ninguna fuente para esta conversación.');
+  }
+
+  const hitos = hitosDe(o.id);
+  partes.push('\n=== HITOS OFICIALES DEL CALENDARIO ===');
+  partes.push(hitos.length
+    ? hitos.slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
+        .map((h) => `- ${fechaLarga(h.fecha)}: ${h.texto}${h.final ? ' [ENTREGA FINAL]' : ''}`).join('\n')
+    : (o.fecha ? `- ${fechaLarga(o.fecha)}: fecha de entrega definida por el estudiante.`
+               : 'Sin hitos oficiales registrados.'));
+
+  const tareas = tareasDe(o.id).slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const hechas = tareas.filter((t) => t.hecha).length;
+  partes.push(`\n=== TAREAS DEL ESTUDIANTE (${hechas}/${tareas.length} completadas) ===`);
+  partes.push(tareas.length
+    ? tareas.map((t) => `- [${t.hecha ? 'x' : ' '}] ${t.nombre} — ${fechaLarga(t.fecha)}`).join('\n')
+    : 'El estudiante no ha anotado ninguna tarea para este objetivo.');
+
+  partes.push(`\nHoy es ${fechaLarga(hoyISO())}.`);
+  return partes.join('\n');
+}
+
+/* (b): los PDFs activos, como bloques `document` en base64. */
+async function expedienteDocumentos(o) {
+  const bloques = [];
+  for (const r of fuentesDe(o.id)) {
+    if (r.tipo !== 'pdf') continue;
+    const base64 = await leerPdf(r.id);
+    if (!base64) continue;
+    bloques.push({
+      type: 'document',
+      /* La API rechaza el base64 con saltos de línea. */
+      source: { type: 'base64', media_type: 'application/pdf', data: base64.replace(/\s+/g, '') },
+      title: r.titulo
+    });
+  }
+  return bloques;
+}
+
+/* (d): el historial completo. La API es sin memoria — si no se reenvía, el
+   tutor no recuerda nada de lo hablado. Los errores no se reenvían: son cosa
+   de la aplicación, no de la conversación. */
+const historialParaApi = (idObjetivo) => hiloDe(idObjetivo)
+  .filter((m) => m.rol === 'usuario' || m.rol === 'tutor')
+  .map((m) => ({ role: m.rol === 'usuario' ? 'user' : 'assistant', content: m.texto }));
+
+/* Traduce un fallo en algo que se pueda leer y accionar. */
+function explicarFallo(estado, cuerpo) {
+  if (estado === 401 || estado === 403) {
+    return 'El entorno no autorizó la llamada al tutor. Esta función necesita abrirse donde la clave de la API esté gestionada.';
+  }
+  if (estado === 429) return 'Demasiadas consultas seguidas. Espera un momento y vuelve a intentarlo.';
+  if (estado === 413) return 'El expediente pesa demasiado. Desactiva algún PDF en el panel de fuentes.';
+  if (estado === 529 || estado >= 500) return 'El servicio está saturado ahora mismo. Inténtalo de nuevo en un minuto.';
+  if (estado === 400) {
+    const detalle = (cuerpo && cuerpo.error && cuerpo.error.message) || '';
+    return 'La petición no era válida' + (detalle ? `: ${detalle}` : '.');
+  }
+  return `El tutor respondió con un error ${estado}.`;
+}
+
+/* `previos` es el historial SIN el mensaje que se está enviando: ese viaja
+   aparte, como mensaje actual y con los documentos adjuntos. */
+async function consultarTutor(o, mensaje, previos) {
+  const documentos = await expedienteDocumentos(o);
+
+  /* Los documentos van antes del texto: es el orden que la API espera. */
+  const contenido = documentos.concat([{ type: 'text', text: mensaje }]);
+
+  const cuerpo = {
+    model: MODELO_IA,
+    max_tokens: MAX_TOKENS_IA,
+    system: `${SISTEMA_TUTOR(o.nombre)}\n\n${expedienteTexto(o)}`,
+    messages: previos.concat([{ role: 'user', content: contenido }])
+  };
+
+  const carga = JSON.stringify(cuerpo);
+  if (carga.length > LIMITE_PETICION) {
+    throw new Error(`El expediente ocupa ${enPeso(carga.length)} y no se puede enviar. Desactiva algún PDF en el panel de fuentes.`);
+  }
+
+  let respuesta;
+  try {
+    respuesta = await fetch(API_MENSAJES, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'anthropic-version': '2023-06-01' },
+      body: carga
+    });
+  } catch {
+    /* fetch sólo lanza si la petición no llegó a salir: sin red, o bloqueada
+       por el navegador. Un error del servidor llega como respuesta, no aquí. */
+    throw new Error('No se pudo contactar con el tutor. Comprueba tu conexión, y ten en cuenta que esta función sólo funciona donde la clave de la API está gestionada.');
+  }
+
+  if (!respuesta.ok) {
+    let detalle = null;
+    try { detalle = await respuesta.json(); } catch { /* cuerpo no-JSON */ }
+    throw new Error(explicarFallo(respuesta.status, detalle));
+  }
+
+  const datos = await respuesta.json();
+
+  /* Se recorre content y se concatenan los bloques de tipo "text". */
+  const texto = (Array.isArray(datos.content) ? datos.content : [])
+    .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+
+  if (datos.stop_reason === 'refusal') {
+    throw new Error('El tutor declinó responder a esa petición. Reformúlala o consulta a tu supervisor.');
+  }
+  if (!texto) {
+    throw new Error('El tutor devolvió una respuesta vacía. Vuelve a intentarlo.');
+  }
+  /* Cortada por el tope de tokens: se avisa en vez de fingir que está entera. */
+  return datos.stop_reason === 'max_tokens'
+    ? texto + '\n\n[La respuesta se cortó por longitud. Pídele que siga.]'
+    : texto;
+}
+
+/* ==========================================================================
    8. AVISO CON DESHACER
    Sustituye a los confirm() del navegador: borrar es inmediato y reversible,
    que resulta más rápido de usar y menos irritante que preguntar dos veces.
@@ -2548,7 +3085,9 @@ const ACCIONES = {
       else if (!Estado.ocultos.includes(id)) Estado.ocultos.push(id);
       Estado.tareas = Estado.tareas.filter((t) => t.objetivo !== id);
       Estado.recursos = Estado.recursos.filter((r) => r.objetivo !== id);
+      delete Estado.conversaciones[id];
       if (Estado.filtro === id) Estado.filtro = null;
+      if (Estado.copiloto === id) Estado.copiloto = null;
       if (Estado.objetivoAbierto === id) cerrar($('#dlg-objetivo'));
     }, `Objetivo «${o.nombre}» quitado del tablero`);
   },
@@ -2651,7 +3190,8 @@ $('#form-recurso').addEventListener('submit', async (ev) => {
   const nota = $('#fr-nota').value.trim();
   const objetivo = $('#fr-objetivo').value;
 
-  const ficha = { id: id || idNuevo('r'), titulo, tipo: tipo.id, objetivo, nota };
+  const contenido = $('#fr-contenido').value.trim();
+  const ficha = { id: id || idNuevo('r'), titulo, tipo: tipo.id, objetivo, nota, contenido };
 
   if (tipo.enlace) {
     const url = urlSegura($('#fr-url').value);
@@ -2732,8 +3272,97 @@ $('#btn-hoy').addEventListener('click', () => irA(mesDe(hoyISO()), null));
 $('#vista-mes').addEventListener('click', () => irA(null, 'mes'));
 $('#vista-agenda').addEventListener('click', () => irA(null, 'agenda'));
 $('#vista-archivos').addEventListener('click', () => irA(null, 'archivos'));
+$('#vista-copiloto').addEventListener('click', () => irA(null, 'copiloto'));
 $('#btn-nuevo-recurso').addEventListener('click', () => abrirEditorRecurso(null, Estado.filtro));
 $('#btn-nuevo-objetivo').addEventListener('click', () => abrirEditorObjetivo(null));
+
+/* --- Copiloto ------------------------------------------------------------ */
+$('#copiloto-objetivo').addEventListener('change', (ev) => {
+  Estado.copiloto = ev.target.value;
+  render();
+  $('#chat-mensaje').focus();
+});
+
+/* Marcar y desmarcar fuentes. Se guarda la lista de DESACTIVADAS para que un
+   recurso nuevo entre en la conversación sin tener que ir a activarlo. */
+$('#lista-fuentes').addEventListener('change', (ev) => {
+  const casilla = ev.target.closest('[data-fuente]');
+  if (!casilla) return;
+  const id = casilla.dataset.fuente;
+  Estado.inactivas = casilla.checked
+    ? Estado.inactivas.filter((x) => x !== id)
+    : Estado.inactivas.concat([id]);
+  guardar();
+  const o = porId(Estado.copiloto);
+  if (o) { renderFuentes(o); renderHilo(o); }
+});
+
+$('#btn-fuentes').addEventListener('click', () => {
+  const abierto = document.body.classList.toggle('fuentes-abiertas');
+  $('#btn-fuentes').setAttribute('aria-expanded', String(abierto));
+});
+
+$('#btn-limpiar-chat').addEventListener('click', () => {
+  const o = porId(Estado.copiloto);
+  if (!o || !hiloDe(o.id).length) return;
+  const copia = hiloDe(o.id).slice();
+  delete Estado.conversaciones[o.id];
+  guardar();
+  render();
+  mostrarAviso(`Conversación de «${o.nombre}» vaciada`, () => {
+    Estado.conversaciones[o.id] = copia;
+    guardar(); render();
+  });
+});
+
+/* Enter envía; Mayús+Enter hace un salto de línea. */
+$('#chat-mensaje').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && !ev.shiftKey) {
+    ev.preventDefault();
+    $('#form-chat').requestSubmit();
+  }
+});
+
+$('#form-chat').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (Estado.enviando) return;
+
+  const o = porId(Estado.copiloto);
+  const mensaje = $('#chat-mensaje').value.trim();
+  if (!o || !mensaje) return;
+
+  /* Sin una sola fuente legible activa el tutor no puede comentar nada del
+     material: se avisa antes de gastar la consulta. */
+  if (!fuentesLegiblesDe(o.id).length) {
+    mostrarAviso('Ninguna fuente activa es legible. Pega el contenido de un recurso o sube un PDF, y actívalo en el panel de fuentes.');
+    document.body.classList.add('fuentes-abiertas');
+    $('#btn-fuentes').setAttribute('aria-expanded', 'true');
+    render();
+    return;
+  }
+
+  const hilo = Estado.conversaciones[o.id] || (Estado.conversaciones[o.id] = []);
+  const previos = historialParaApi(o.id);   /* antes de añadir el nuevo */
+  hilo.push({ rol: 'usuario', texto: mensaje });
+  $('#chat-mensaje').value = '';
+  Estado.enviando = true;
+  guardar();
+  render();
+
+  try {
+    const respuesta = await consultarTutor(o, mensaje, previos);
+    hilo.push({ rol: 'tutor', texto: respuesta });
+  } catch (error) {
+    /* El fallo se queda en el hilo, visible, en lugar de desaparecer en un
+       aviso pasajero: así se ve a qué mensaje corresponde. */
+    hilo.push({ rol: 'error', texto: (error && error.message) || 'No se pudo obtener respuesta del tutor.' });
+  } finally {
+    Estado.enviando = false;
+    guardar();
+    render();
+    $('#chat-mensaje').focus();
+  }
+});
 
 /* Búsqueda con rebote: no se redibuja el tablero en cada pulsación. */
 let temporizadorBusqueda = null;
@@ -2871,6 +3500,8 @@ $('#btn-restablecer').addEventListener('click', () => {
   mutar(() => {
     Estado.tareas = EJEMPLO.map((t) => ({ ...t }));
     Estado.recursos = [];
+    Estado.conversaciones = {};
+    Estado.inactivas = [];
     Estado.propios = [];
     Estado.ocultos = [];
   }, 'Tablero restablecido');
@@ -2971,6 +3602,7 @@ document.addEventListener('keydown', (ev) => {
     case '1': irA(null, 'mes'); break;
     case '2': irA(null, 'agenda'); break;
     case '3': irA(null, 'archivos'); break;
+    case '4': irA(null, 'copiloto'); break;
     case 'n': case 'N': ev.preventDefault(); abrirEditorObjetivo(null); break;
     case '/': ev.preventDefault(); $('#busqueda').focus(); $('#busqueda').select(); break;
   }
