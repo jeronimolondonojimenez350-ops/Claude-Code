@@ -1,3 +1,83 @@
+## Aplicaciones de este repositorio
+
+| Archivo | Qué es |
+|---|---|
+| [`tablero-ib.html`](#-tablero-de-tareas-académicas-ib) | Tablero mensual de objetivos y tareas del Diploma IB. |
+| [`cronograma.html`](#️-cronograma-semanal-para-dos-personas) | Cronograma semanal para dos personas. |
+
+Las dos son archivos HTML autónomos: se abren con doble clic, sin servidor y
+sin conexión a internet.
+
+---
+
+# 📋 Tablero de tareas académicas IB
+
+Calendario mensual de los objetivos del Diploma (pruebas internas, monografía,
+ensayo de TdC, CAS…) con las tareas propias colgando de cada uno.
+
+Implementa el diseño **Modernist** creado en claude.ai/design, reescrito como
+aplicación: misma paleta y misma tipografía, con una escala tipográfica única,
+navegación real entre meses y ventanas accesibles.
+
+### ▶️ Cómo abrirlo
+
+Doble clic sobre **`tablero-ib.html`**. Nada más.
+
+### ✨ Qué puedes hacer
+
+| Función | Cómo se usa |
+|---|---|
+| **Vista Mes** | El calendario completo: hitos oficiales y tus tareas en el día que les toca. |
+| **Vista Agenda** | Sólo los días con algo anotado, en orden. Cómoda en el móvil. |
+| **Cambiar de mes** | Flechas ‹ › de la cabecera, o las teclas ← →. El botón **Hoy** vuelve al mes actual. |
+| **Abrir un objetivo** | Clic en el cuadro negro del calendario, o en el objetivo de la barra lateral. |
+| **Añadir una tarea** | Dentro de un objetivo, o con el **+** que aparece al pasar por encima de un día. |
+| **Marcar como hecha** | Clic en la casilla cuadrada, en cualquiera de las tres vistas. |
+| **Mover una tarea** | **Arrástrala** a otro día del calendario, o cambia la fecha en su ventana de edición. |
+| **Crear tus objetivos** | **+ Nuevo objetivo** en la barra lateral: nombre, materia, fecha de entrega y color. |
+| **Buscar** | Campo de la cabecera (tecla `/`). Ignora acentos y mayúsculas. |
+| **Filtrar** | Icono ◎ de un objetivo: el tablero apaga todo lo demás. |
+| **Deshacer** | Al borrar aparece un aviso con **Deshacer** (o `Ctrl+Z`). No hay ventanas de confirmación. |
+| **Tema claro / oscuro** | Botón ◐. Por defecto sigue al del sistema. |
+| **Copia de seguridad** | Botón ⋯ → **Exportar / Importar** un archivo `.json`. |
+| **Imprimir o PDF** | `Ctrl+P`: sale el tablero del mes sin barras ni botones. |
+| **Enlace directo** | La dirección lleva el mes y la vista (`#/mes/2026-08`), así que Atrás y Adelante funcionan. |
+
+### ⌨️ Atajos de teclado
+
+| Tecla | Qué hace |
+|---|---|
+| `←` `→` | Mes anterior / siguiente |
+| `H` | Volver al mes de hoy |
+| `1` `2` | Cambiar entre Mes y Agenda |
+| `/` | Buscar |
+| `N` | Nuevo objetivo |
+| `Esc` | Cerrar la ventana abierta |
+| `Ctrl+Z` | Deshacer lo último borrado |
+
+### 🎨 Personalización (editando el archivo)
+
+Abre `tablero-ib.html` con un editor de texto y busca las marcas
+**`>>> PERSONALIZAR <<<`**:
+
+- `OBJETIVOS_BASE` — los objetivos oficiales y su tono de color.
+- `HITOS` — las entregas del calendario, con fecha completa (`AAAA-MM-DD`).
+  Añadir otro mes es sólo añadir filas.
+- `FESTIVOS` — los días sin clase.
+- Los **tokens de color** y la **escala tipográfica**, al principio del `<style>`.
+
+Cada objetivo aporta un solo dato de color, su **tono** (0-360); los tres
+colores que se ven (trazo, fondo suave y color sobre la tarjeta negra) los
+deriva la hoja de estilos, de modo que el tema oscuro los re-tiñe solo.
+
+### 💾 Sobre tus datos
+
+Se guardan en el navegador (`localStorage`). Si venías de la versión anterior
+del tablero, tus tareas se migran solas la primera vez. Conviene exportar un
+respaldo `.json` antes de cambiar de equipo o limpiar el navegador.
+
+---
+
 # 🗓️ Cronograma semanal para dos personas
 
 Una aplicación web sencilla para planear y comparar las rutinas semanales de dos
