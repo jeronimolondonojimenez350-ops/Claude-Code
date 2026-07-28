@@ -1688,10 +1688,18 @@ function irA(mes, vista, { historial = true, desliz = 0 } = {}) {
 
   /* El hash se arma con los valores nuevos, no leyendo Estado: cuando hay
      transición de vista, `aplicar` corre más tarde y Estado aún es el viejo. */
-  if (historial) {
-    const hash = `#/${nuevaVista}/${nuevoMes}`;
-    if (location.hash !== hash) history.pushState(null, '', hash);
-  }
+  if (historial) escribirRuta(`#/${nuevaVista}/${nuevoMes}`, 'push');
+}
+
+/* Dentro de un marco aislado el historial puede estar prohibido y lanzar. Que
+   la barra de direcciones no acompañe es aceptable; que la página no arranque,
+   no. */
+function escribirRuta(hash, modo) {
+  if (location.hash === hash) return;
+  try {
+    if (modo === 'push') history.pushState(null, '', hash);
+    else history.replaceState(null, '', hash);
+  } catch { /* sin historial: la aplicación funciona igual */ }
 }
 
 function leerRuta() {
@@ -2176,7 +2184,7 @@ if (ruta) {
   const hayAlgoHoy = Estado.tareas.some((t) => mesDe(t.fecha) === mesHoy) ||
                      HITOS.some((h) => mesDe(h.fecha) === mesHoy);
   Estado.mes = hayAlgoHoy ? mesHoy : MES_INICIAL;
-  history.replaceState(null, '', `#/${Estado.vista}/${Estado.mes}`);
+  escribirRuta(`#/${Estado.vista}/${Estado.mes}`, 'replace');
 }
 
 render();
